@@ -1,0 +1,24 @@
+[package]
+name = "tests"
+edition.workspace = true
+license.workspace = true
+readme.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+bpf = { path = "../bpf" }
+derive_builder = "0.20"
+libbpf-rs.workspace = true
+libc = "0.2"
+libtest-mimic.workspace = true
+nix = { workspace = true, features = ["ptrace"] }
+parse_int = "0.6"
+seabee = { path = "../seabee" }
+serde.workspace = true
+serde_json.workspace = true
+serde_json_any_key = "2.0"
+toml.workspace = true
+tracing.workspace = true
+zerocopy.workspace = true

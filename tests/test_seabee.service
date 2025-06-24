@@ -1,0 +1,7 @@
+[Unit]
+Description=SeaBee Service
+
+[Service]
+Type=exec
+ExecStart=/usr/bin/seabee --sigint allow --pin-modification allow
+KillSignal=SIGINT

@@ -1,0 +1,6 @@
+*
+!.gitignore
+!Makefile
+!test_kmod.c
+!test_kmod.h
+!test_kmod_user.c

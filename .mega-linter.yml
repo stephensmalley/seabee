@@ -1,0 +1,52 @@
+# Configuration file for MegaLinter
+# See all available variables at https://oxsecurity.github.io/megalinter/configuration/
+# and in linters documentation
+
+ADDITIONAL_EXCLUDED_DIRECTORIES:
+  - external
+
+# whether to automatically apply fixes
+APPLY_FIXES: none
+
+# If you use ENABLE_LINTERS variable, all other linters will be disabled
+# by default
+ENABLE_LINTERS:
+  - BASH_EXEC
+  - BASH_SHELLCHECK
+  - BASH_SHFMT
+  - C_CLANG_FORMAT
+  - MAKEFILE_CHECKMAKE
+  - MARKDOWN_MARKDOWNLINT
+  - PYTHON_BLACK
+  - PYTHON_ISORT
+  - PYTHON_RUFF
+  - YAML_YAMLLINT
+
+C_CLANG_FORMAT_FILTER_REGEX_EXCLUDE: (bpf/include/vmlinux*)
+PYTHON_BLACK_DISABLE_ERRORS: false
+PYTHON_ISORT_DISABLE_ERRORS: false
+
+# Remote Reporters
+EMAIL_REPORTER: false
+FILEIO_REPORTER: false
+GITHUB_COMMENT_REPORTER: false
+GITHUB_STATUS_REPORTER: false
+GITLAB_COMMENT_REPORTER: false
+
+# Local Reporters
+CONFIG_REPORTER: false
+TAP_REPORTER: false
+TEXT_REPORTER: false
+UPDATED_SOURCES_REPORTER: false
+
+# DISABLE_ERRORS: true # Uncomment if you want MegaLinter to detect errors but not block CI to pass
+
+# Logging Config which optimizes the info displayed in the output log
+FLAVOR_SUGGESTIONS: false
+LOG_FILE: none
+LOG_LEVEL: INFO
+PRINT_ALL_FILES: false
+PRINT_ALPACA: false
+REPORT_OUTPUT_FOLDER: none
+SHOW_ELAPSED_TIME: true
+SHOW_SKIPPED_LINTERS: false

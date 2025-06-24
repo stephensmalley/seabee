@@ -1,0 +1,120 @@
+settings:
+  width: 80
+  height: 24
+  title: SeeBee demo
+  timeout: 15s
+  prompt: "[seabee]$ "
+
+instructions:
+  - !Command
+    command: cd ..
+    hidden: true
+
+  - !Command
+    command: "# Compile the program and look at the binary's properties"
+  - !Command
+    command: make release
+  - !Command
+    command: ls -lh target/release/seabee
+  - !Command
+    command: file target/release/seabee
+  - !Command
+    command: ldd target/release/seabee
+
+  - !Marker CLI Options
+  - !Clear
+  - !Command
+    command: "# Print out the help menu"
+  - !Command
+    command: target/release/seabee -h
+
+  - !Marker systemd service
+  - !Clear
+  - !Command
+    command: "# Look at the systemd service file"
+  - !Command
+    command: cat /etc/systemd/system/seabee.service
+
+  - !Marker systemctl status
+  - !Clear
+  - !Command
+    command: "# Look at the status of the systemd service"
+  - !Command
+    command: systemctl status -n 0 --no-pager seabee
+
+  - !Marker journald
+  - !Clear
+  - !Command
+    command: "# Look at the last 12 logs sent to the journal"
+  - !Command
+    command: journalctl --no-hostname --no-pager -n 12 -u seabee --output cat
+    type_speed: 50ms
+
+  - !Marker pstree
+  - !Clear
+  - !Command
+    command: "# Running under systemd prevents killing of the parent"
+  - !Command
+    command: PID=`systemctl show -p MainPID --value seabee.service` && echo $PID
+    type_speed: 50ms
+  - !Command
+    command: pstree -ps $PID
+
+  - !Marker bpftool progs
+  - !Clear
+  - !Command
+    command: "# List the names of the eBPF programs we're running"
+  - !Command
+    command: "sudo bpftool prog list -j | jq --argjson PID \"$PID\" '.[] | select(.pids[0].pid == $PID) | .name'"
+    type_speed: 50ms
+
+  - !Marker bpffs mount protection
+  - !Clear
+  - !Command
+    command: "# Protection of the BPF filesystem mount"
+  - !Command
+    command: mount | grep /sys/fs/bpf
+  - !Command
+    command: sudo ls -l /sys/fs/bpf
+  - !Command
+    command: stat /sys/fs/bpf
+  - !Command
+    command: sudo umount -f /sys/fs/bpf
+  - !Command
+    command: journalctl --no-hostname --no-pager -n 20 -u seabee --output cat | grep umount
+    type_speed: 50ms
+
+  - !Marker pin protection
+  - !Clear
+  - !Command
+    command: "# Protection of the BPF pins"
+  - !Command
+    command: sudo ls /sys/fs/bpf/seabee
+  - !Command
+    command: sudo stat /sys/fs/bpf/seabee/lsm_bpf
+  - !Command
+    command: sudo rm -f /sys/fs/bpf/seabee/lsm_bpf
+  - !Command
+    command: journalctl --no-hostname --no-pager -n 20 -u seabee --output cat | grep rm
+    type_speed: 50ms
+
+
+  - !Marker ptrace protection
+  - !Clear
+  - !Command
+    command: "# Protection of the userspace process from ptrace() syscall"
+  - !Command
+    command: sudo strace -p $PID
+  - !Command
+    command: journalctl --no-hostname --no-pager -n 20 -u seabee --output cat | grep strace
+    type_speed: 50ms
+
+  - !Marker kill protection
+  - !Clear
+  - !Command
+    command: "# Protection of the userspace process from the kill() syscall"
+  - !Command
+    command: sudo kill -9 $PID
+  - !Command
+    command: journalctl --no-hostname --no-pager -n 20 -u seabee --output cat | grep kill
+    type_speed: 50ms

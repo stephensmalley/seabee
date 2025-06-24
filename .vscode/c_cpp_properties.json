@@ -1,0 +1,15 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "compilerPath": "/usr/bin/clang",
+            "cStandard": "c11",
+            "intelliSenseMode": "linux-clang-x64",
+            "includePath": [
+                "${default}",
+                "bpf/include"
+            ]
+        }
+    ],
+    "version": 4
+}

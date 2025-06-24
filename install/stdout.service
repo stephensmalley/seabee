@@ -1,0 +1,11 @@
+[Unit]
+Description=SeaBee Service
+RequiresMountsFor=/sys/fs/bpf
+After=sysinit.target
+
+[Service]
+Type=exec
+ExecStart=/usr/bin/seabee
+
+[Install]
+WantedBy=basic.target

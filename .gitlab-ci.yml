@@ -1,0 +1,186 @@
+# You can override the included template(s) by including variable overrides
+# SAST customization: https://docs.gitlab.com/ee/user/application_security/sast/#customizing-the-sast-settings
+# Secret Detection customization: https://docs.gitlab.com/ee/user/application_security/secret_detection/#customizing-settings
+# Dependency Scanning customization: https://docs.gitlab.com/ee/user/application_security/dependency_scanning/#customizing-the-dependency-scanning-settings
+# Container Scanning customization: https://docs.gitlab.com/ee/user/application_security/container_scanning/#customizing-the-container-scanning-settings
+# Note that environment variables can be set in several places
+# See https://docs.gitlab.com/ee/ci/variables/#cicd-variable-precedence
+
+stages:
+  - lint
+  - build
+  - test
+  - deploy
+
+variables:
+  CARGO_HOME: ${CI_PROJECT_DIR}/.cargo # Cache dependencies between jobs
+  GIT_DEPTH: 0
+  RUSTFLAGS: "-Dwarnings"   # make all warnings cause CI job to fail
+
+# From https://gitlab.com/gitlab-org/gitlab/-/issues/15170#note_1133365836
+# Prevents pipelines from being generated for empty branches
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: always
+    - if: $CI_COMMIT_BRANCH
+      changes:
+        paths:
+          - "*"
+          - "**/*"
+        compare_to: refs/heads/main
+      when: always
+
+# Runs the MegaLinter Docker image from https://megalinter.io/latest/
+# This uses the .mega-linter.yml configuration file found in the top-level
+# The Docker image is very large on-disk (~9.6 GB), so make sure your
+# GitLab Runner has enough disk space to download it
+mega-linter:
+  stage: lint
+  # DOCKER_MIRROR is a manually defined CI variable. See docs/docs/ci.md .
+  image: "${DOCKER_MIRROR}oxsecurity/megalinter:v7.12.0"
+  script:
+    - "true"
+  variables:
+    DEFAULT_WORKSPACE: "$CI_PROJECT_DIR"
+  cache: []
+
+# Copied from https://stackoverflow.com/a/74888341
+# This causes a job to download a cache from a previous job on the same
+# Git branch so that the Rust crate dependencies and their binaries do
+# not need to be re-downloaded and re-compiled on every job
+cache: &global_cache
+  key: ${CI_COMMIT_REF_SLUG}  # Share cache between all jobs on one branch/tag
+  paths:
+    - .cargo/registry/index
+    - .cargo/registry/cache
+    - target
+  policy: pull-push           # by default, jobs should pull/push to the cache
+
+# Uses the Docker image as defined by the file ci/Dockerfile and uploaded to
+# the GitLab registry to run the standard Rust formatter and clippy tools.
+# See docs/docs/ci.md for more information about building/uploading this image.
+rust-lint:
+  stage: lint
+  # CI_REGISTRY and CI_PROJECT_PATH are defined by GitLab's predefined CI variables
+  # https://docs.gitlab.com/ci/variables/predefined_variables
+  image: "${CI_REGISTRY}/${CI_PROJECT_PATH}:build"
+  script:
+    - cargo fmt -- --check
+    - cargo clippy --all-targets --all-features --no-deps
+  cache:
+    <<: *global_cache
+
+# Uses the Docker image as defined by the file ci/Dockerfile and uploaded to
+# the GitLab registry to compile release binaries.
+# See docs/docs/ci.md for more information about building/uploading this image.
+rust-build:
+  stage: build
+  # CI_REGISTRY and CI_PROJECT_PATH are defined by GitLab's predefined CI variables
+  # https://docs.gitlab.com/ci/variables/predefined_variables
+  image: "${CI_REGISTRY}/${CI_PROJECT_PATH}:build"
+  artifacts:
+    # Only keep the binaries uploaded to GitLab for one day, then delete.
+    # The default is to keep forever until the job is deleted on GitLab.
+    expire_in: 1 day
+    # These are the binaries that each "test" job should be copied to every testing
+    # GitLab Runner before executing. Otherwise, each GitLab Runner would have to
+    # compile its own versions of the binaries. This list should be updated any time
+    # a new binary is required by the integration tests
+    paths:
+      - target/release/bpf_write_user
+      - target/release/daemon_test
+      - target/release/integration_test
+      - target/release/seabee
+      - target/release/seabeectl
+  script:
+    - make release
+  cache:
+    <<: *global_cache
+
+# Uses the Docker image as defined by the file ci/Dockerfile and uploaded to
+# the GitLab registry to compile the Rust-based documentation.
+# See docs/docs/ci.md for more information about building/uploading this image.
+rust-doc:
+  stage: build
+  # CI_REGISTRY and CI_PROJECT_PATH are defined by GitLab's predefined CI variables
+  # https://docs.gitlab.com/ci/variables/predefined_variables
+  image: "${CI_REGISTRY}/${CI_PROJECT_PATH}:build"
+  artifacts:
+    # Only keep the documentation uploaded to GitLab for one day, then delete.
+    # The default is to keep forever until the job is deleted on GitLab.
+    expire_in: 1 day
+    # Save the compiled output of the documentation to be shared with the pages job
+    paths:
+      - target/doc/
+  script:
+    - cargo doc --no-deps
+  rules:
+    # only run on commits to the default branch
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+  cache:
+    <<: *global_cache
+
+# Downloads the release binaries generated by the rust-build job and executes
+# the integration test suite to determine compatibility with a variety of
+# operating system versions defined by the "parallel" tag.
+test:
+  stage: test
+  # This causes all artifacts in the specified job(s) to be downloaded
+  # locally to the runner before running the script
+  dependencies:
+    - rust-build
+  # Convenience script to print the running kernel for determining if the
+  # kernel module compilation step is targeting the right kernel.
+  before_script:
+    - uname -ar
+  script:
+    - sudo scripts/update_test_dependencies.sh
+    - make gen-root-key-ci
+    - sudo make install-root-key
+    - make test-release-ci
+  # See https://docs.gitlab.com/ci/yaml/#parallel
+  parallel:
+    matrix:
+      - OS: ubuntu
+        VERSION: [jammy, noble]
+      - OS: fedora
+        VERSION: [41, 42]
+      - OS: rocky
+        VERSION: [9]
+  # Uses the variables defined by the "parallel" tag above
+  tags:
+    - ${OS}-${VERSION}
+
+# Compiles the web-based documentation for the project and uploads it
+# to the GitLab Pages static webpage feature.
+# See https://docs.gitlab.com/user/project/pages/ for more details.
+pages:
+  stage: deploy
+  # DOCKER_MIRROR is a manually defined CI variable. See docs/docs/ci.md .
+  image: "${DOCKER_MIRROR}python:3.12-alpine3.20"
+  # This causes all artifacts in the specified job(s) to be downloaded locally
+  # to the GitLab Runner before running the script
+  dependencies:
+    - rust-doc
+  # This downloads the dependencies required to build the documentation from source
+  # This could be turned into a Dockerfile that is uploaded to the GitLab Registry
+  # to reduce runtimes, but the job is only ran on commits to the default branch.
+  before_script:
+    - apk add $APK_ADD_OPTIONS make git doxygen
+    - python -m pip install poetry==1.8.3
+    - if [ ! -z $PIP_INDEX_URL ]; then poetry source add -d mirror "$PIP_INDEX_URL"; fi
+    - poetry install
+  script:
+    - make -C docs build
+  artifacts:
+    # Save the full output of the documentation to the location that GitLab Pages
+    # expects it to be in for uploading to the website.
+    paths:
+      - public
+    # Only keep the documentation uploaded to GitLab for one day, then delete.
+    # The default is to keep forever until the job is deleted on GitLab.
+    expire_in: 1 day
+  rules:
+    # only run on commits to the default branch
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH

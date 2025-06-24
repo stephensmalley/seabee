@@ -1,0 +1,11 @@
+name: test-policy
+version: 2
+scope:
+  - abcdefghijklmnopqrstuvwxyz
+files:
+  - /etc/seabee/config.toml
+  - /etc/seabee/keylist.yaml
+config:
+  map_access: allow
+  file_write_access: audit
+  pin_access: blocked

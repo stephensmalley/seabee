@@ -1,0 +1,8 @@
+# This is the default config file
+# This configuration is our secure configuration for production use.
+# This configuration file will include a default setting for every configuraiton option.
+
+log_level = "info"
+map_protection = "blocked"
+pin_protection = "blocked"
+allow_sigint = "no"

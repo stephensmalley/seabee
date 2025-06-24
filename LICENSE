@@ -1,0 +1,13 @@
+The SeaBee software is generally released under the Apache License, Version 2.0
+("Apache 2.0").
+
+In the bpf directory, any code that is compiled and loaded into the Linux kernel
+is released using the GNU Public License 2.0 ("GPL 2.0") license. eBPF programs
+must have a GPL-compatible license in order to use GPL'ed key helper functions
+and the Linux Security Module (LSM) layer of the Linux kernel.
+
+Reference the SPDX identifier at the top of the file to determine which license applies.
+If the SPDX identifier is missing, assume that the Apache 2.0 license applies.
+
+See the files LICENSE.APACHE-2.0 in this directory and bpf/LICENSE.GPL-2.0
+for more details about the terms of these two licenses.

@@ -1,0 +1,34 @@
+[maps]
+map_to_pol_id = { type = "hash", is_static = false }
+path_to_pol_id = { type = "hash", is_static = true }
+path_storage =  { type = "percpu_array", is_static = false }
+log_ringbuf = { type = "ringbuf", is_static = true }
+task_storage = { type = "task_storage", is_static = true }
+sk_storage = { type = "sk_storage", is_static = true }
+policy_map = { type = "hash", is_static = true }
+inode_storage = { type = "inode_storage", is_static = true }
+"seabee_b.bss" = { type = "array", is_static = true }
+"seabee_b.rodata" = { type = "array", is_static = true }
+".rodata.str1.1" = { type = "array", is_static = true }
+
+[pins]
+dir = "/sys/fs/bpf/seabee"
+
+# we can't know the inode ahead of time, 0 is a placeholder
+[pins.pins]
+seabee_bpf_map = 0
+seabee_task_kill = 0
+seabee_inode_unlink = 0
+seabee_sb_umount = 0
+seabee_kernel_module_request = 0
+seabee_kernel_read_file = 0
+seabee_kernel_load_data = 0
+seabee_ptrace_access_check = 0
+seabee_locked_down = 0
+seabee_file_open = 0
+seabeectl_auth = 0
+seabee_label_sock = 0
+seabee_label_process = 0
+seabee_label_map = 0
+seabee_unlabel_map = 0
+seabee_label_pin = 0

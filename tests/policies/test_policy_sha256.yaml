@@ -1,0 +1,11 @@
+name: test-policy-sha2
+version: 1
+scope:
+  - abcdefghijklmnopqrstuvwxyz
+files:
+  - /etc/seabee/config.toml
+config:
+  map_access: audit
+  file_write_access: audit
+  pin_access: audit
+digest: sha256

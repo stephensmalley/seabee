@@ -1,0 +1,12 @@
+{
+	"[c]": {
+        "editor.defaultFormatter": "ms-vscode.cpptools"
+    },
+    "C_Cpp.autoAddFileAssociations": false,
+	"files.watcherExclude": {
+		"**/.git/objects/**": true,
+		"**/.git/subtree-cache/**": true,
+		"**/.cargo/**": true
+    },
+    "rust-analyzer.cargo.targetDir": true,
+}

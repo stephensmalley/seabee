@@ -1,0 +1,13 @@
+{
+    "recommendations": [
+        "charliermarsh.ruff",
+        "DavidAnson.vscode-markdownlint",
+        "EditorConfig.EditorConfig",
+        "ms-vscode.cpptools",
+        "vivaxy.vscode-conventional-commits"
+    ],
+    "unwantedRecommendations": [
+        "ms-vscode.cpptools-extension-pack",
+        "ms-vscode.makefile-tools"
+    ]
+}

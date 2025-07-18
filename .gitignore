@@ -2,3 +2,5 @@
 /target
 /tests/crypto/sigs
 __pycache__
+seabee-root-private-key.pem
+seabee-root-public-key.pem

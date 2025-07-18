@@ -14,7 +14,7 @@ use crate::{config::Config, policy::SeaBeePolicy};
 mod cli;
 pub mod config;
 pub mod constants;
-mod crypto;
+pub mod crypto;
 mod enforce;
 mod kernel_api;
 pub mod lockdown;
@@ -63,7 +63,6 @@ pub fn seabee_init(config: Config, open_obj: &mut MaybeUninit<OpenObject>) -> Re
     LOG_FILTER.get_or_init(|| config.log_filter.clone());
 
     print_debug_info(&config);
-    config::init_paths()?;
 
     let policy = SeaBeePolicy::init(&config)?;
     let mut sb = match enforce::load_ebpf(config.clone(), policy, open_obj) {
@@ -101,7 +100,12 @@ pub fn main_loop(
         // sync policy
         policy::runtime_update::runtime_policy_update(&mut seabee)?;
         // check for logs
-        log_rb.poll(timeout)?;
+        if let Err(e) = log_rb.poll(timeout) {
+            // sometimes SIGINT will interrupt poll() which is okay
+            if e.kind() != libbpf_rs::ErrorKind::Interrupted {
+                return Err(e.into());
+            }
+        }
     }
     info!("Exiting main loop");
     Ok(())

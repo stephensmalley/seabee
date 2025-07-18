@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
-use std::fs;
+use std::{fs, path::Path};
 use tracing::{debug, error};
 
-use crate::{constants, SeaBee};
+use crate::{constants, utils, SeaBee};
 
 /// Automatic cleanup for [SeaBee] at process exit
 ///
@@ -16,7 +16,7 @@ impl Drop for SeaBee<'_> {
 
 pub fn cleanup_return() {
     // shutting down external communications should happen first
-    if let Err(e) = fs::remove_file(constants::SOCKET_PATH) {
+    if let Err(e) = utils::remove_if_exists(Path::new(constants::SOCKET_PATH)) {
         error!("error cleaning up socket path: {}", e);
     }
 

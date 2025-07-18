@@ -89,10 +89,11 @@ rust-build:
     # a new binary is required by the integration tests
     paths:
       - target/release/bpf_write_user
-      - target/release/daemon_test
+      - target/release/policy_test
       - target/release/integration_test
       - target/release/seabee
       - target/release/seabeectl
+      - target/release/test_tool
   script:
     - make release
   cache:

@@ -10,7 +10,7 @@ version.workspace = true
 anyhow.workspace = true
 bpf = { path = "../bpf" }
 clap = { version = "4.5", features = ["derive"] }
-ctrlc = { version = "3.4", features = ["termination"] }
+ctrlc.workspace = true
 itertools = "0.14.0"
 libbpf-rs.workspace = true
 libc = "0.2"
@@ -25,7 +25,6 @@ serde_json.workspace = true
 serde_yaml = "0.9" # this create is deprecated, but is still the best for the job it seems
 strum.workspace = true
 strum_macros.workspace = true
-toml.workspace = true
 tracing.workspace = true
 tracing-journald = "0.3"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["std", "fmt", "ansi", "registry"] }

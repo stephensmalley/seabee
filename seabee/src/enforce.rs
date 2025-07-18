@@ -7,7 +7,7 @@ use libbpf_rs::{
     OpenObject,
 };
 use procfs::KernelVersion;
-use tracing::info;
+use tracing::{debug, info};
 
 use crate::{
     cli::SecurityLevel, config::Config, constants, edit_seabee_skel, kernel_api,
@@ -27,6 +27,7 @@ fn get_seabee_skel<'a>(
     skel_object: &'a mut MaybeUninit<OpenObject>,
 ) -> Result<Box<dyn Skel<'a> + 'a>> {
     let kernel_version = KernelVersion::current()?;
+    debug!("Detected kernel version {:?}", kernel_version);
 
     let seabee_skel: Box<dyn Skel> = if kernel_version >= KernelVersion::new(6, 9, 0) {
         edit_seabee_skel!(seabee_6_9_0, skel_object, config)

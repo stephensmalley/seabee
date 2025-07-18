@@ -14,12 +14,12 @@ use libtest_mimic::{Arguments, Failed};
 
 use bpf::logging::LogLevel;
 use seabee::{
-    config::{configure_logging, Config, SecurityLevel},
+    config::{self, configure_logging, Config, SecurityLevel},
     constants, utils, SeaBee,
 };
 use tests::suite::{TestSuite, TestSystemState};
 
-use tests::functional::FunctionalTestSuite as FTS;
+use tests::functional::FunctionalTestSuite as SBFTS;
 use tests::security::SeaBeeSecurityTestSuite as SBSTS;
 use tracing::info;
 
@@ -35,6 +35,7 @@ fn start_seabee_with_logging(
     config: Config,
     open_obj: &mut MaybeUninit<OpenObject>,
 ) -> Result<(SeaBee, ThreadControl)> {
+    config::init_paths()?;
     let sb = seabee::seabee_init(config, open_obj)?;
     let stop_trigger = Arc::new(AtomicBool::new(true));
     let stop_trigger_clone = stop_trigger.clone();
@@ -82,16 +83,15 @@ fn functional_tests(args: &Arguments, log_level: LogLevel) -> Result<(), Failed>
 
     let mut open_obj = MaybeUninit::uninit();
     let (sb, thread_control) = start_seabee_with_logging(config, &mut open_obj)?;
-
     let pin_dir = &PathBuf::from(constants::PIN_DIR);
-    FTS::run_tests(
+    SBFTS::run_tests(
         args,
         TestSystemState::new(&*sb.skel, pin_dir, GROUND_TRUTH)?,
         0,
     )?;
     cleanup_seabee_with_logging(thread_control)?;
 
-    FTS::check_args(TestSystemState::new(&*sb.skel, pin_dir, GROUND_TRUTH)?)?;
+    SBFTS::check_args(TestSystemState::new(&*sb.skel, pin_dir, GROUND_TRUTH)?)?;
 
     Ok(())
 }

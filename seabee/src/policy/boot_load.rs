@@ -22,7 +22,7 @@ impl super::SeaBeePolicy {
             }
 
             // load other keys
-            debug!("try load key: {:?}, {:?}", key.path, key.sig_digest);
+            debug!("try load key: {:?}, {}", key.path, key.sig_digest);
             let sig_path = fs_api::get_sig_path(&key.path, &FileType::Key)?;
             let result = if sig_path.exists() {
                 self.add_key(&key.path, &Some(sig_path), &Some(key.sig_digest))
@@ -33,7 +33,7 @@ impl super::SeaBeePolicy {
             // report result
             match result {
                 Ok(_) => info!("Added key from: {}", key.path.display()),
-                Err(_) => error!("Failed to add key from {}", key.path.display()),
+                Err(e) => error!("Failed to add key from {}\n{e}", key.path.display()),
             }
         }
 

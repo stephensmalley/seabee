@@ -9,6 +9,7 @@ use super::suite::TestSuite;
 
 mod maps;
 mod pins;
+mod seabeectl_local;
 mod userspace;
 
 pub static TEST_SYSTEM_STATE: OnceLock<TestSystemState> = OnceLock::new();
@@ -17,7 +18,7 @@ pub static UNUSED_CUSTOM_STATE: OnceLock<u32> = OnceLock::new();
 pub struct FunctionalTestSuite;
 
 impl TestSuite for FunctionalTestSuite {
-    type CustomTestState = u32; // never used
+    type CustomTestState = u32;
 
     fn system_state() -> &'static OnceLock<crate::suite::TestSystemState> {
         &TEST_SYSTEM_STATE
@@ -32,6 +33,7 @@ impl TestSuite for FunctionalTestSuite {
         tests.extend(maps::tests());
         tests.extend(pins::tests());
         tests.extend(userspace::tests());
+        tests.extend(seabeectl_local::tests());
         tests
     }
 }

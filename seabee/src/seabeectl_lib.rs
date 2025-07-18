@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 use std::{
+    fs,
     io::{ErrorKind, Read, Write},
     os::unix::net::UnixStream,
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use anyhow::{anyhow, Result};
@@ -12,12 +13,13 @@ use serde::{Deserialize, Serialize};
 use crate::{
     constants,
     crypto::{self, SeaBeeDigest},
+    utils,
 };
 use bpf::seabee::NO_POL_ID;
 
 /// Used to query or modify seaBee policies
 #[derive(Debug, Parser)]
-#[command(version)]
+#[command(version, about, long_about)]
 pub struct SeaBeeCtlArgs {
     /// Do policy action
     #[command(subcommand)]
@@ -42,22 +44,57 @@ pub enum LocalCommand {
     Sign(crypto::SignInfo),
     /// Test verifying a policy with a public verification key
     Verify(crypto::VerifyInfoCLI),
+    /// Remove SeaBee policies and keys.
+    ///
+    /// Only works while SeaBee is turned off. Inteded for debugging.
+    #[command(subcommand)]
+    Clean(CleanCommand),
+    /// Control the saved SeaBee Config
+    #[command(subcommand)]
+    Config(ConfigCommand),
+}
+
+#[derive(Clone, Debug, Subcommand)]
+pub enum CleanCommand {
+    /// Remove all saved SeaBee policies
+    Policy,
+    /// Remove all saved SeaBee keys. Policies may not verify on next boot.
+    Keys,
+    /// Remove the SeaBee root key. SeaBee will not start without a root key installed.
+    RootKey,
+    /// Remove the SeaBee saved config
+    Config,
+    /// Remove all SeaBee saved data
+    All,
+}
+
+#[derive(Clone, Debug, Subcommand)]
+pub enum ConfigCommand {
+    /// Get the current saved config from /etc/seabee/config.toml
+    Get,
+    /// Update the current saved config while SeaBee is turned off
+    Update { path: PathBuf },
+    /// Remove the current SeaBee saved config
+    Remove,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, Subcommand)]
 pub enum SocketCommand {
     /// List all currently loaded policies
     List,
-    /// Display a loaded policy
+    /// Display a single loaded policy
     #[command(subcommand)]
     Show(ObjIdentifier),
-    /// Add or update a policy from a path. If the name of the policy already exists, SeaBee will
+    /// Add or update a policy from a path.
+    ///
+    /// If the name of the policy already exists, SeaBee will
     /// attempt to update. Otherwise SeaBee will add a new policy.
     /// You cannot change the policy scope via a policy update.
     /// You must increment policy version for update to be accepted.
     /// If SeaBee has verification enabled, then a signature will be needed as well.
     Update(SignedRequestInfo),
     /// Remove an existing policy with a remove request.
+    ///
     /// A remove request is a yaml document with only the target policy name and version.
     /// A signature must acompany the remove request if verification is enabled.
     Remove(SignedRequestInfo),
@@ -66,10 +103,13 @@ pub enum SocketCommand {
     /// Show a single SeaBee verification key
     #[command(subcommand)]
     ShowKey(KeyIdentifier),
-    /// Add a new verification key. If --verify-keys is enabled, a signature from the
+    /// Add a new verification key
+    ///
+    /// If --verify-keys is enabled, a signature from the
     /// seabee root key is required on the new key file.
     AddKey(SignedRequestInfo),
-    /// Remove an existing verification key.
+    /// Remove an existing verification key
+    ///
     /// A signature by the target key or the root key.
     /// Removing a key does not immediately revoke policies or other verification keys
     /// previosuly signed with this key. During reboot, policies and keys will be
@@ -82,6 +122,7 @@ pub enum SocketCommand {
 #[derive(Args, Clone, Debug, Deserialize, Serialize)]
 pub struct SignedRequestInfo {
     /// Depending on the type of request, this can be a path to a key, a policy, or a remove request.
+    ///
     /// Use the path of the key for adding or removing a key.
     /// Use the path of the policy for adding or updating a policy.
     /// Use the path to a remove request for removing a policy.
@@ -185,6 +226,10 @@ pub fn execute_socket_command(command: SocketCommand) -> Result<()> {
     // wait for the response and print it out to the console
     let mut response = String::new();
     stream.read_to_string(&mut response)?;
+
+    if response.contains("Error executing command:") {
+        return Err(anyhow!("{}", response));
+    }
     println!("{}", response);
 
     Ok(())
@@ -194,11 +239,53 @@ pub fn execute_local_command(cmd: LocalCommand) -> Result<()> {
     // handle commands that don't need a socket connection
     let output = match &cmd {
         LocalCommand::Alg => crypto::list_crypto_alg(),
-        LocalCommand::Sign(info) => crypto::sign_policy(info)?,
+        LocalCommand::Sign(info) => crypto::sign_file(info)?,
         LocalCommand::Verify(info) => crypto::verify_policy_signature_cli(info)?,
+        LocalCommand::Clean(subcmd) => seabeectl_clean(subcmd)?,
+        LocalCommand::Config(subcmd) => seabeectl_config(subcmd)?,
     };
 
     println!("{}", output);
+    Ok(())
+}
+
+fn seabeectl_clean(cmd: &CleanCommand) -> Result<String> {
+    match cmd {
+        CleanCommand::All => utils::remove_if_exists(Path::new(constants::SEABEE_DIR))?,
+        CleanCommand::Keys => {
+            utils::remove_if_exists(Path::new(constants::KEY_DIR))?;
+            utils::remove_if_exists(Path::new(constants::KEY_SIGNATURE_DIR))?;
+            utils::remove_if_exists(Path::new(constants::KEYLIST_PATH))?;
+        }
+        CleanCommand::Policy => {
+            utils::remove_if_exists(Path::new(constants::POLICY_DIR))?;
+            utils::remove_if_exists(Path::new(constants::POL_SIGNATURE_DIR))?;
+        }
+        CleanCommand::RootKey => {
+            utils::remove_if_exists(Path::new(constants::SEABEE_ROOT_KEY_PATH))?
+        }
+        CleanCommand::Config => utils::remove_if_exists(Path::new(constants::CONFIG_PATH))?,
+    }
+    Ok("Success!".to_string())
+}
+
+fn seabeectl_config(cmd: &ConfigCommand) -> Result<String> {
+    match cmd {
+        ConfigCommand::Get => return Ok(fs::read_to_string(constants::CONFIG_PATH)?),
+        ConfigCommand::Remove => fs::remove_file(constants::CONFIG_PATH)?,
+        ConfigCommand::Update { path } => update_config(path)?,
+    };
+    Ok("Success!".to_string())
+}
+
+fn update_config(path: &PathBuf) -> Result<()> {
+    utils::create_dir_if_not_exists(constants::SEABEE_DIR)?;
+    if let Err(e) = fs::copy(path, constants::CONFIG_PATH) {
+        return Err(anyhow!(
+            "Failed to update SeaBee saved config at {}\n{e}",
+            path.display()
+        ));
+    }
     Ok(())
 }
 

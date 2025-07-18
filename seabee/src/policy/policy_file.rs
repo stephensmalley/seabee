@@ -52,8 +52,8 @@ pub struct PolicyFile {
     /// Uniquely idenfies a policy file and corresponds to name
     #[serde(skip, default = "default_policy_id")]
     pub id: u32,
-    // Stores the path to the policy
-    #[serde(skip, default = "default_path")]
+    // Stores the path to the policy in the seabee policy directory
+    #[serde(skip, default)]
     pub seabee_path: PathBuf,
     /// Uniquely identifies a policy file
     pub name: String,
@@ -61,7 +61,7 @@ pub struct PolicyFile {
     pub scope: HashSet<String>,
     pub files: HashSet<String>,
     pub config: PolicyConfig,
-    #[serde(default = "default_digest")]
+    #[serde(default)]
     pub digest: crypto::SeaBeeDigest,
     // Identifies the key used to sign this policy
     #[serde(skip)]
@@ -70,14 +70,6 @@ pub struct PolicyFile {
 
 fn default_policy_id() -> u32 {
     NO_POLICY_ID
-}
-
-fn default_path() -> PathBuf {
-    PathBuf::new()
-}
-
-fn default_digest() -> crypto::SeaBeeDigest {
-    crypto::SeaBeeDigest::default()
 }
 
 impl PolicyFile {

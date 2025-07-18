@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 use std::{
-    fs::File,
+    fs::{self, File},
     io::{ErrorKind, Read},
-    path::{Path, PathBuf},
+    path::Path,
 };
 
 use anyhow::{anyhow, Result};
@@ -52,20 +52,21 @@ pub fn verify_file_has_ext(file: &Path, expected_ext: Vec<&str>) -> Result<()> {
     ))
 }
 
-pub fn get_abs_path(path: &PathBuf) -> Result<PathBuf> {
-    let current_dir = std::env::current_dir()?;
-    Ok(if path.is_absolute() {
-        path.to_path_buf()
-    } else {
-        current_dir.join(path)
-    })
+pub fn file_to_bytes(file: &dyn AsRef<Path>) -> Result<Vec<u8>> {
+    let mut file_bytes = Vec::new();
+    let mut open_file = File::open(file)
+        .map_err(|e| anyhow!("Failed to open file {:?}\n{e}", file.as_ref().display()))?;
+    open_file
+        .read_to_end(&mut file_bytes)
+        .map_err(|e| anyhow!("failed to read file {}\n{e}", file.as_ref().display()))?;
+    Ok(file_bytes)
 }
 
-pub fn file_to_bytes(file: &dyn AsRef<Path>) -> Result<Vec<u8>> {
-    let mut open_file = File::open(file)?;
-    let mut file_bytes = Vec::new();
-    open_file.read_to_end(&mut file_bytes)?;
-    Ok(file_bytes)
+pub fn str_to_abs_path(path: &str) -> Result<String> {
+    match std::path::absolute(path)?.to_str() {
+        Some(abs_path) => Ok(abs_path.to_owned()),
+        None => Err(anyhow!("failed to convert '{path}' to String")),
+    }
 }
 
 /// Converts a path to a u8 vector with a requested max size
@@ -109,6 +110,15 @@ pub const fn is_sigint_allowed(sigint: SecurityLevel) -> bool {
     matches!(sigint, SecurityLevel::allow | SecurityLevel::audit)
 }
 
+pub fn create_dir_if_not_exists(dir: &str) -> Result<()> {
+    if let Err(e) = fs::create_dir_all(dir) {
+        if e.kind() != ErrorKind::AlreadyExists {
+            return Err(anyhow!("failed to create dir '{}'\n{}", dir, e));
+        }
+    }
+    Ok(())
+}
+
 /// try to open a file for reading, but create the file if it does not exist
 ///
 /// Why open or create for all files we protect?
@@ -140,4 +150,20 @@ pub fn open_or_create(path: &str) -> Result<()> {
             }
         },
     }
+}
+
+pub fn remove_if_exists(path: &Path) -> Result<()> {
+    let result = if path.is_dir() {
+        fs::remove_dir_all(path)
+    } else {
+        fs::remove_file(path)
+    };
+    if let Err(e) = result {
+        match e.kind() {
+            ErrorKind::NotFound => return Ok(()),
+            _ => return Err(anyhow!("Failed to remove {}\n{e}", path.display())),
+        }
+    };
+
+    Ok(())
 }

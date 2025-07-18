@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /**
- * @file seabee_combined.bpf.c
+ * @file seabee.bpf.c
  */
 
 #include "vmlinux.h"
@@ -455,7 +455,7 @@ int BPF_PROG(seabee_kernel_read_file, struct file *file,
  * @param contents true if security_kernel_post_load_data() will be called
  *
  * @return {@link ALLOW} or {@link DENY}
- ******************************************************************************/
+ */
 SEC("lsm/kernel_load_data")
 int BPF_PROG(seabee_kernel_load_data, enum kernel_load_data_id id,
              bool contents)
@@ -601,6 +601,19 @@ int BPF_PROG(seabeectl_auth, struct sock *sock, struct sock *other,
 	return ALLOW;
 }
 
+/**
+ * @brief Label a process when it starts
+ *
+ * This uses the path_to_pol_id map and the linux_binprm structure to
+ * attach a label to a task based on the path of the executable that started
+ * the task. This hook can be called multiple times during an execve, for
+ * example, if executing a script.
+ *
+ * @param bprm holds information about a binary that is going to be executed
+ *
+ * @return {@link ALLOW} since this check is just for labeling and not
+ * for enforcement
+ */
 SEC("lsm/bprm_check_security")
 int BPF_PROG(seabee_label_process, struct linux_binprm *bprm, int ret)
 {
@@ -623,6 +636,9 @@ int BPF_PROG(seabee_label_process, struct linux_binprm *bprm, int ret)
 	return ALLOW;
 }
 
+/**
+ * @brief Label a child process with same policy id as its parent
+ */
 SEC("lsm/task_alloc")
 int BPF_PROG(seabee_label_child_process, struct task_struct *child_task,
              unsigned long clone_flags)
@@ -636,6 +652,10 @@ int BPF_PROG(seabee_label_child_process, struct task_struct *child_task,
 }
 
 #if BPF_CODE_VERSION >= KERNEL_VERSION(6, 9, 0)
+/**
+ * @brief Label an eBPF map on creation using the same label as the process that
+ * created it
+ */
 SEC("lsm/bpf_map_create")
 int BPF_PROG(seabee_label_map, struct bpf_map *map, union bpf_attr *attr,
              struct bpf_token *token, int ret)
@@ -643,18 +663,28 @@ int BPF_PROG(seabee_label_map, struct bpf_map *map, union bpf_attr *attr,
 	return label_map(map);
 }
 
+/**
+ * @brief Unlabel an eBPF map when it is freed
+ */
 SEC("lsm/bpf_map_free")
 int BPF_PROG(seabee_unlabel_map, struct bpf_map *map, int ret)
 {
 	return unlabel_map(map);
 }
 #else
+/**
+ * @brief Label a bpf map on creation using the same label as the process that
+ * created it
+ */
 SEC("lsm/bpf_map_alloc_security")
 int BPF_PROG(seabee_label_map, struct bpf_map *map, int ret)
 {
 	return label_map(map);
 }
 
+/**
+ * @brief Unlabel an eBPF map when it is freed
+ */
 SEC("lsm/bpf_map_free_security")
 int BPF_PROG(seabee_unlabel_map, struct bpf_map *map, int ret)
 {
@@ -662,6 +692,10 @@ int BPF_PROG(seabee_unlabel_map, struct bpf_map *map, int ret)
 }
 #endif
 
+/**
+ * @brief Label an eBPF pin when it is created, using the same label as
+ * the process that created it
+ */
 SEC("lsm/bpf")
 int BPF_PROG(seabee_label_pin, int cmd, union bpf_attr *attr, unsigned int size,
              int ret)

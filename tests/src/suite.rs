@@ -12,7 +12,7 @@ use super::state::{linux, rust, BPFState};
 #[macro_export]
 macro_rules! create_test {
     ($func: path) => {
-        Trial::test(stringify!($func), move || $func())
+        libtest_mimic::Trial::test(stringify!($func), move || $func())
     };
 }
 

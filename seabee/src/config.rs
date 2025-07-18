@@ -2,20 +2,19 @@
 
 use std::collections::HashSet;
 use std::fs;
-use std::io::ErrorKind;
 use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Once};
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use tracing_subscriber::prelude::*;
 
 use bpf::logging::{EventType, LogLevel};
 
 pub use crate::cli::SecurityLevel;
 use crate::cli::{args_from_cli, args_from_file, Args};
-use crate::constants::*;
 use crate::policy::policy_file::PolicyFile;
+use crate::{constants::*, utils};
 use tracing::{trace, warn};
 
 static LOGGING: Once = Once::new();
@@ -31,8 +30,8 @@ pub fn configure() -> Result<Config> {
     let default = tracing_subscriber::fmt().with_target(false).finish();
     let config = tracing::subscriber::with_default(default, || -> Result<Config> {
         let mut base_args = Args::default();
-        // This 'unwrap_or_default' works because every struct member of Args is an Option type and defaults to None
-        base_args.apply(args_from_file(CONFIG_PATH).unwrap_or_default());
+        init_paths()?;
+        base_args.apply(args_from_file(CONFIG_PATH)?);
         base_args.apply(args_from_cli()?);
         Ok(base_args.into())
     })?;
@@ -73,25 +72,16 @@ pub fn init_paths() -> Result<()> {
     // They do not get cleaned up because we need to save policies and keys
     // through a reboot. We should not error if they exist when we start up.
     trace!("create seabee directories");
-    create_dir_if_not_exists(SEABEE_DIR)?;
-    create_dir_if_not_exists(POLICY_DIR)?;
-    create_dir_if_not_exists(POL_SIGNATURE_DIR)?;
-    create_dir_if_not_exists(KEY_DIR)?;
-    create_dir_if_not_exists(KEY_SIGNATURE_DIR)?;
+    utils::create_dir_if_not_exists(SEABEE_DIR)?;
+    utils::create_dir_if_not_exists(POLICY_DIR)?;
+    utils::create_dir_if_not_exists(POL_SIGNATURE_DIR)?;
+    utils::create_dir_if_not_exists(KEY_DIR)?;
+    utils::create_dir_if_not_exists(KEY_SIGNATURE_DIR)?;
     // These files are part of the SeaBee base policy
     trace!("create config and service path");
-    crate::utils::open_or_create(CONFIG_PATH)?;
-    crate::utils::open_or_create(SERVICE_PATH)?;
+    utils::open_or_create(CONFIG_PATH)?;
+    utils::open_or_create(SERVICE_PATH)?;
     trace!("finished creating paths");
-    Ok(())
-}
-
-fn create_dir_if_not_exists(dir: &str) -> Result<()> {
-    if let Err(e) = fs::create_dir_all(dir) {
-        if e.kind() != ErrorKind::AlreadyExists {
-            return Err(anyhow!("failed to create dir '{}'\n{}", dir, e));
-        }
-    }
     Ok(())
 }
 

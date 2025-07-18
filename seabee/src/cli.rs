@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use clap::{Parser, ValueEnum};
 use serde::Deserialize;
 
@@ -42,22 +42,24 @@ impl Default for Args {
 /// Get config info from CLI arguments
 pub fn args_from_cli() -> Result<Args> {
     let cli_args = Args::parse();
-    // Get args from file or use Args::default() which is a blank config (None for all options)
-    let mut file_args = if cli_args.config.is_some() {
-        args_from_file(cli_args.config.as_ref().unwrap())?
-    } else {
-        Args::default()
-    };
-    file_args.apply(cli_args);
-    Ok(file_args)
+    // Get args from a path provided on the command line
+    if cli_args.config.is_some() {
+        let mut file_args = args_from_file(cli_args.config.as_ref().unwrap())?;
+        file_args.apply(cli_args);
+        return Ok(file_args);
+    }
+    Ok(cli_args)
 }
 
 /// Get config info from a config file
 ///
 /// <div class="warning">This funciton does not check if the file exists</div>
 pub fn args_from_file(config_path: &str) -> Result<Args> {
-    let config_str = std::fs::read_to_string(config_path)?;
-    let args: Args = toml::from_str(&config_str)?;
+    let config_str = std::fs::read_to_string(config_path)
+        .map_err(|e| anyhow!("Failed to read file: {config_path}\n{e}"))?;
+    let args = serde_yaml::from_str(&config_str)
+        .map_err(|e| anyhow!("Failed to parse file into config: {config_path}\n{e}"))?;
+
     Ok(args)
 }
 
@@ -109,6 +111,7 @@ pub struct Args {
 
     // A list of LogTypes to exclude from output
     #[arg(short, long, value_delimiter = ' ', num_args = 0..)]
+    #[serde(default)]
     exclude: Vec<LogTypeCLI>,
 
     /// Whether or not digital signature verification for policy updates is enabled. This option is enabled
@@ -292,12 +295,10 @@ impl LogTypeCLI {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_unknown_config_option() {
-        let bad_config_str = "bad_option = bad";
-        let args: Result<Args, toml::de::Error> = toml::from_str(bad_config_str);
+        let bad_config_str = "bad_option: bad";
+        let args: Result<(), serde_yaml::Error> = serde_yaml::from_str(bad_config_str);
         assert!(args.is_err());
     }
 }

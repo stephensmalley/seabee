@@ -9,6 +9,7 @@ version.workspace = true
 [dependencies]
 anyhow.workspace = true
 bpf = { path = "../bpf" }
+ctrlc.workspace = true
 derive_builder = "0.20"
 libbpf-rs.workspace = true
 libc = "0.2"
@@ -19,6 +20,8 @@ seabee = { path = "../seabee" }
 serde.workspace = true
 serde_json.workspace = true
 serde_json_any_key = "2.0"
-toml.workspace = true
+strum.workspace = true
+strum_macros.workspace = true
+toml = "0.8"
 tracing.workspace = true
 zerocopy.workspace = true

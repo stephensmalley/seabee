@@ -4,8 +4,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use clap::Args;
+use itertools::Itertools;
 use openssl::{
     self,
     bn::BigNumContext,
@@ -14,7 +15,7 @@ use openssl::{
     pkey::{Id, PKey, Public},
     sign::{Signer, Verifier},
 };
-use strum::VariantNames;
+use strum::IntoEnumIterator;
 use zerocopy::IntoBytes;
 
 use crate::{policy::policy_file::PolicyFile, utils};
@@ -41,14 +42,23 @@ impl SeaBeeKey {
     pub fn new_key(path: &PathBuf, id: u32) -> Result<Self> {
         utils::verify_file_has_ext(path, vec!["pem"])?;
         let key_file_bytes = utils::file_to_bytes(&path)?;
-        let abs_path = utils::get_abs_path(path)?;
+        let key = PKey::public_key_from_pem(&key_file_bytes)?;
+        match key.id() {
+            Id::RSA | Id::EC => {}
+            other => {
+                return Err(anyhow!(
+                    "key has unsupported type: {:?}. Only EC and RSA keys are supported by SeaBee.",
+                    other
+                ))
+            }
+        };
 
         Ok(Self {
-            added_from: abs_path,
+            added_from: std::path::absolute(path)?,
             seabee_path: PathBuf::new(),
             sig_path: PathBuf::new(),
             sig_digest: SeaBeeDigest::default(),
-            key: PKey::public_key_from_pem(&key_file_bytes)?,
+            key,
             id,
         })
     }
@@ -95,6 +105,66 @@ impl fmt::Display for SeaBeeKey {
     }
 }
 
+/// SHA3: [NIST FIPS 202](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf)
+/// SHA2: [NIST FIPS 180-4](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf)
+#[derive(
+    clap::ValueEnum,
+    Clone,
+    Debug,
+    Default,
+    serde::Deserialize,
+    serde::Serialize,
+    strum_macros::FromRepr,
+    strum_macros::AsRefStr,
+    strum_macros::EnumIter,
+)]
+pub enum SeaBeeDigest {
+    sha3_224 = 1,
+    #[default]
+    sha3_256,
+    sha3_384,
+    sha3_512,
+    sha224,
+    sha256,
+    sha384,
+    sha512,
+}
+
+impl SeaBeeDigest {
+    pub fn to_kebab_case(&self) -> String {
+        self.as_ref().replace('_', "-")
+    }
+}
+
+impl fmt::Display for SeaBeeDigest {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.to_kebab_case())
+    }
+}
+
+impl TryFrom<SeaBeeDigest> for MessageDigest {
+    type Error = anyhow::Error;
+
+    fn try_from(value: SeaBeeDigest) -> std::result::Result<Self, Self::Error> {
+        MessageDigest::from_name(&value.to_kebab_case()).context(anyhow!(
+            "Failed to convert '{}' to MessageDigest",
+            &value.to_kebab_case()
+        ))
+    }
+}
+
+impl TryFrom<u32> for SeaBeeDigest {
+    type Error = anyhow::Error;
+
+    /// Tries to match u32 to a discriminant value for a SeaBeeDigest
+    fn try_from(value: u32) -> std::result::Result<Self, Self::Error> {
+        match SeaBeeDigest::from_repr(value as usize) {
+            Some(digest) => Ok(digest),
+            None => Err(anyhow!("Could not convert u32 '{}' to SeaBeeDigest", value)),
+        }
+    }
+}
+
 /// Information needed to sign a policy
 #[derive(Args, Debug, Clone)]
 pub struct SignInfo {
@@ -113,88 +183,64 @@ pub struct SignInfo {
     /// Message digest algorithm, overrides a digest specified in policy file.
     #[arg(short, long)]
     digest: Option<SeaBeeDigest>,
+
+    /// Will not prompt for password. Note that unencrypted private keys are should not be used in production. Default is false (password required).
+    #[arg(short, long, default_value = "false")]
+    nopass: bool,
 }
 
-/// SHA3: [NIST FIPS 202](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf)
-/// SHA2: [NIST FIPS 180-4](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf)
-#[derive(
-    clap::ValueEnum,
-    Clone,
-    Debug,
-    Default,
-    serde::Deserialize,
-    serde::Serialize,
-    strum_macros::FromRepr,
-    strum_macros::VariantNames,
-    strum_macros::AsRefStr,
-)]
-pub enum SeaBeeDigest {
-    sha3_224 = 1,
-    #[default]
-    sha3_256,
-    sha3_384,
-    sha3_512,
-    sha224,
-    sha256,
-    sha384,
-    sha512,
-}
-
-impl TryFrom<SeaBeeDigest> for MessageDigest {
-    type Error = anyhow::Error;
-
-    fn try_from(value: SeaBeeDigest) -> std::result::Result<Self, Self::Error> {
-        let name = value.as_ref().replace('_', "-");
-        match MessageDigest::from_name(&name) {
-            Some(d) => Ok(d),
-            None => Err(anyhow!("Failed to convert '{}' to MessageDigest", name)),
-        }
+pub fn sign_file(info: &SignInfo) -> Result<String> {
+    // verify input
+    if !info.key_path.exists() {
+        return Err(anyhow!(
+            "key path does not exist: {}",
+            info.key_path.display()
+        ));
     }
-}
-
-impl TryFrom<u32> for SeaBeeDigest {
-    type Error = anyhow::Error;
-
-    /// Tries to match u32 to a discriminant value for a SeaBeeDigest
-    fn try_from(value: u32) -> std::result::Result<Self, Self::Error> {
-        match SeaBeeDigest::from_repr(value as usize) {
-            Some(digest) => Ok(digest),
-            None => Err(anyhow!("Could not convert u32 '{}' to SeaBeeDigest", value)),
-        }
+    if !info.target_path.exists() {
+        return Err(anyhow!(
+            "target path does not exist: {}",
+            info.target_path.display()
+        ));
     }
-}
+    utils::verify_file_has_ext(&info.key_path, vec!["pem"])?;
 
-pub fn sign_policy(info: &SignInfo) -> Result<String> {
+    // get key and target
+    let key_bytes = utils::file_to_bytes(&info.key_path)?;
+    let target_bytes = utils::file_to_bytes(&info.target_path)?;
+
     // Get hash function
     let hash_func = get_digest_algorithm(&info.target_path, &info.digest)?;
 
-    // Get the pem file contents
-    utils::verify_file_has_ext(&info.key_path, vec!["pem"])?;
-    let key_bytes = utils::file_to_bytes(&info.key_path)?;
+    // Get private key
+    let signing_key = if info.nopass {
+        PKey::private_key_from_pem(&key_bytes)
+            .map_err(|e| anyhow!("failed getting unencrypted private key from pem:\n{e}"))?
+    } else {
+        let passphrase = rpassword::prompt_password("Enter pem passphrase for signing key:")?;
+        PKey::private_key_from_pem_passphrase(&key_bytes, passphrase.as_bytes())
+            .map_err(|e| anyhow!("failed getting encrypted private key from pem:\n{e}"))?
+    };
 
-    // Get pem passphrase from command line
-    let passphrase = rpassword::prompt_password("Enter pem passphrase for signing key:")?;
     // Create openssl signer with hash_func and key
     // This supports algorithms besides RSA and ECDSA, but I have those listed as supported since they are common and NIST approved
-    let signing_key = PKey::private_key_from_pem_passphrase(&key_bytes, passphrase.as_bytes())?;
     let mut signer = Signer::new(hash_func, &signing_key)?;
-    // Get policy file contents
-    let policy_bytes = utils::file_to_bytes(&info.target_path)?;
     // Sign policy
-    let signature = signer.sign_oneshot_to_vec(&policy_bytes)?;
+    let signature = signer.sign_oneshot_to_vec(&target_bytes)?;
     // Output signature
-    if let Err(e) = std::fs::write(&info.out_path, signature.as_bytes()) {
-        Err(anyhow!(
-            "Error write signature '{:?}' to file '{}'\n{e}",
+    std::fs::write(&info.out_path, signature.as_bytes()).map_err(|e| {
+        anyhow!(
+            "Error write signature '{:?}' to file '{}'\n{}",
             signature,
             info.out_path.display(),
-        ))
-    } else {
-        Ok(format!(
-            "Successfully wrote signature to '{}'",
-            &info.out_path.display()
-        ))
-    }
+            e
+        )
+    })?;
+
+    Ok(format!(
+        "Successfully wrote signature to '{}'",
+        &info.out_path.display()
+    ))
 }
 
 /// Information needed to verify a policy.
@@ -220,6 +266,27 @@ pub struct VerifyInfoCLI {
 
 /// verify a file through the cli using VerifyInfoCLI struct
 pub fn verify_policy_signature_cli(info: &VerifyInfoCLI) -> Result<String> {
+    // validate input
+    if !info.key_path.exists() {
+        return Err(anyhow!(
+            "key path does not exist: {}",
+            info.key_path.display()
+        ));
+    }
+    if !info.target_path.exists() {
+        return Err(anyhow!(
+            "target path does not exist: {}",
+            info.target_path.display()
+        ));
+    }
+    if !info.sig_path.exists() {
+        return Err(anyhow!(
+            "signature path does not exist: {}",
+            info.sig_path.display()
+        ));
+    }
+
+    // get key and digest
     let key = SeaBeeKey::new_key(&info.key_path, 0)?;
     let digest = get_digest_algorithm(&info.target_path, &info.digest)?;
 
@@ -265,7 +332,7 @@ pub fn list_crypto_alg() -> String {
     out.push_str("Digital Signature Algorithms: RSA, ECDSA\n");
     out.push_str(&format!(
         "Message Digest Algorithms: {}\n",
-        SeaBeeDigest::VARIANTS.join(", ")
+        SeaBeeDigest::iter().join(", ")
     ));
     out.push_str("Key formats: pem");
     out

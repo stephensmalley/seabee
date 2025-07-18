@@ -2,7 +2,7 @@
 #ifndef SEABEE_ENFORCE_LOG_H_
 #define SEABEE_ENFORCE_LOG_H_
 /**
- * @file seabee_enforce_log.h
+ * @file seabee_log.h
  */
 
 #include "logging.h"

@@ -1,0 +1,9 @@
+name: test-tool-policy
+version: 1
+scope:
+  - ../target/release/test_tool
+files:
+config:
+  map_access: blocked
+  file_write_access: blocked
+  pin_access: blocked

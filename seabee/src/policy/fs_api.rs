@@ -12,6 +12,7 @@ use super::policy_file::PolicyFile;
 use crate::{
     constants::{self, KEYLIST_PATH},
     crypto::{SeaBeeDigest, SeaBeeKey},
+    utils,
 };
 
 /// Used to distinguish between keys and policies
@@ -78,21 +79,24 @@ pub fn generate_policy_from_yaml(yaml_path: &PathBuf) -> Result<PolicyFile> {
     }
 
     // set filesystem path
-    new_policy.seabee_path = get_seabee_path(yaml_path, &FileType::Policy)?;
+    new_policy.seabee_path = get_seabee_policy_path(&new_policy.name)?;
 
     Ok(new_policy)
 }
 
 // Remove a policy or key file from disk and the corresponding signature
 pub fn delete_seabee_file_and_sig(file_path: &PathBuf, file_type: &FileType) -> Result<()> {
+    // remove file
     if let Err(e) = fs::remove_file(file_path) {
         return Err(anyhow!(
             "failed to {file_type:?} file at '{}'\n{e}",
             file_path.display()
         ));
     }
+
+    // remove signature
     let sig_path = get_sig_path(file_path, file_type)?;
-    if let Err(e) = fs::remove_file(&sig_path) {
+    if let Err(e) = utils::remove_if_exists(&sig_path) {
         return Err(anyhow!(
             "failed to remove {file_type:?} file signature at '{}'\n{e}",
             sig_path.display()
@@ -104,22 +108,22 @@ pub fn delete_seabee_file_and_sig(file_path: &PathBuf, file_type: &FileType) -> 
 /// Save a policy or key to disk and its signature
 /// If signature is none, then no signature is saved to disk
 pub fn save_seabee_file_and_sig(
-    file_path: &PathBuf,
-    file_type: &FileType,
+    src_path: &PathBuf,
+    dest_path: &PathBuf,
     sig_path: &Option<PathBuf>,
+    file_type: &FileType,
 ) -> Result<()> {
     // get paths
-    let new_path = get_seabee_path(file_path, file_type)?;
-    let new_sig_path = get_sig_path(file_path, file_type)?;
+    let new_sig_path = get_sig_path(dest_path, file_type)?;
 
     // save file if it doesn't already exist
     // make sure that source and dest for copy are different
-    if *file_path != new_path {
-        if let Err(e) = fs::copy(file_path, &new_path) {
+    if dest_path != src_path {
+        if let Err(e) = fs::copy(src_path, dest_path) {
             return Err(anyhow!(
                 "add_new_policy_from_yaml: failed to copy from {} to {}. Got error: {e}",
-                file_path.display(),
-                new_path.display(),
+                src_path.display(),
+                dest_path.display(),
             ));
         }
     }
@@ -139,19 +143,27 @@ pub fn save_seabee_file_and_sig(
     Ok(())
 }
 
-/// Return a path where the input document will be stored on disk.
+/// Return a path where the policy will be stored on disk.
 ///
-/// * `input_path` - the path of a file passed in to SeaBee
-/// * `input_type` - whether the path is to a policy or key
-pub fn get_seabee_path(input_path: &Path, input_type: &FileType) -> Result<PathBuf> {
-    let dir = match input_type {
-        FileType::Policy => constants::POLICY_DIR,
-        FileType::Key => constants::KEY_DIR,
-    };
+/// * `policy_name` - the name of a SeaBee policy
+fn get_seabee_policy_path(policy_name: &String) -> Result<PathBuf> {
+    let mut path = Path::new(constants::POLICY_DIR).join(policy_name);
+    if !path.set_extension("yaml") {
+        return Err(anyhow!(
+            "failed to set yaml extension on policy: {}",
+            policy_name
+        ));
+    }
+    Ok(path)
+}
 
+/// Return a path where the key will be stored on disk.
+///
+/// * `input_path` - the path of a key passed in to SeaBee
+pub fn get_seabee_key_path(input_path: &Path) -> Result<PathBuf> {
     // get the new file path
     match input_path.file_name() {
-        Some(name) => Ok(Path::new(dir).join(name)),
+        Some(name) => Ok(Path::new(constants::KEY_DIR).join(name)),
         None => Err(anyhow!(
             "get_seabee_path: invalid file name for path '{}'",
             input_path.display()

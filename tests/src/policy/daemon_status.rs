@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /// Integration test suite for the SeaBee systemd daemon
-use libtest_mimic::{Arguments, Failed, Trial};
+use libtest_mimic::Failed;
 
-use tests::{command::TestCommandBuilder, create_test};
-use tracing::info;
+use crate::command::TestCommandBuilder;
 
 /// Test that the daemon is active and running
-fn daemon_check_daemon_status() -> Result<(), Failed> {
+pub fn daemon_status() -> Result<(), Failed> {
     TestCommandBuilder::default()
         .program("systemctl")
         .args(&["is-active", "test_seabee"])
@@ -18,7 +17,7 @@ fn daemon_check_daemon_status() -> Result<(), Failed> {
 }
 
 /// Test that the individual threads of the daemon cannot be killed
-fn daemon_security_deny_tid_sigkill() -> Result<(), Failed> {
+pub fn daemon_deny_tid_sigkill() -> Result<(), Failed> {
     let main_pid = get_daemon_main_pid()?;
     for tid in get_daemon_tids(main_pid)? {
         TestCommandBuilder::default()
@@ -80,26 +79,5 @@ fn is_running(pid: u64) -> Result<(), Failed> {
         )
         .into());
     }
-    Ok(())
-}
-
-fn main() -> Result<(), Failed> {
-    let args = Arguments::from_args();
-    // verify system requirements and dependencies
-    seabee::utils::verify_requirements()?;
-
-    let conclusion = libtest_mimic::run(
-        &args,
-        vec![
-            create_test!(daemon_check_daemon_status),
-            create_test!(daemon_security_deny_tid_sigkill),
-        ],
-    );
-
-    if conclusion.has_failed() {
-        return Err("At least one test failed".into());
-    }
-
-    info!("Successfully completed all tests!");
     Ok(())
 }

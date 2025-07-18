@@ -23,7 +23,7 @@ pub const PIN_DIR: &str = "/sys/fs/bpf/seabee";
 pub const SEABEE_DIR: &str = "/etc/seabee";
 
 /// The path to the seabeectl executable
-pub const SEABEECTL_EXE: &str = "/usr/bin/seabeectl";
+pub const SEABEECTL_EXE: &str = "/usr/sbin/seabeectl";
 
 /// The directory to store policy files
 pub const POLICY_DIR: &str = "/etc/seabee/policy";

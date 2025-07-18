@@ -130,8 +130,9 @@ impl super::SeaBeePolicy {
         // Save updated policy to disk
         if let Err(e) = fs_api::save_seabee_file_and_sig(
             &request.target_path,
-            &FileType::Policy,
+            &new_policy.seabee_path,
             &request.sig_path,
+            &FileType::Policy,
         ) {
             return Err(anyhow!("Policy update succeeded, but error occurred while updating files on disk.\nChanges will not persist after reboot. Issuing another successful policy update would resolve the issue.\n{e}"));
         }
@@ -220,8 +221,9 @@ impl super::SeaBeePolicy {
             return Err(anyhow!("Not possible to change policy scope via an update. Instead, remove and replace policy.\nNew policy scope did not match old policy scope of: {}", old_policy.scope.iter().join(", ")));
         }
 
-        // assign policy id
+        // assign policy id, key id
         new_policy.id = old_policy.id;
+        new_policy.key_id = old_policy.key_id;
 
         // update kernel policy map
         kernel_api::update_kernel_policy_map(maps, new_policy.id, &new_policy.config)?;
@@ -269,8 +271,9 @@ impl super::SeaBeePolicy {
             return Err(anyhow!("Version did not match for policy named '{}'\nSeaBee version: {}, input version: {}", input_policy.name, target_policy.version, input_policy.version));
         }
 
-        // Remove from fs, kernel, and SeaBee
+        // Remove from fs
         fs_api::delete_seabee_file_and_sig(&target_policy.seabee_path, &FileType::Policy)?;
+        // Remove from kernel
         if let Err(e) = kernel_api::remove_kernel_policy(maps, target_policy.id) {
             // try to restore file on filesystem and report error
             fs::write(
@@ -282,6 +285,7 @@ impl super::SeaBeePolicy {
                 target_policy.id,
             ));
         }
+        // Remove from seabee
         self.policies.remove(&target_policy.name.clone());
         Ok(())
     }
@@ -313,20 +317,20 @@ impl super::SeaBeePolicy {
 
     pub fn add_key(
         &mut self,
-        key_path: &PathBuf,
+        src_path: &PathBuf,
         sig_path: &Option<PathBuf>,
         sig_digest: &Option<SeaBeeDigest>,
     ) -> Result<String> {
         // Get Key
         if self.verify_keys {
-            self.verify_signature(key_path, sig_path, sig_digest, Some(super::ROOT_KEY_ID))?;
+            self.verify_signature(src_path, sig_path, sig_digest, Some(super::ROOT_KEY_ID))?;
         }
-        let mut new_key = SeaBeeKey::new_key(key_path, self.get_next_key_id()?)?;
-        new_key.seabee_path = fs_api::get_seabee_path(key_path, &FileType::Key)?;
-        new_key.sig_path = fs_api::get_sig_path(key_path, &FileType::Key)?;
+        let mut new_key = SeaBeeKey::new_key(src_path, self.get_next_key_id()?)?;
+        new_key.seabee_path = fs_api::get_seabee_key_path(src_path)?;
+        new_key.sig_path = fs_api::get_sig_path(&new_key.seabee_path, &FileType::Key)?;
 
         // Add key and sig to fs
-        fs_api::save_seabee_file_and_sig(key_path, &FileType::Key, sig_path)?;
+        fs_api::save_seabee_file_and_sig(src_path, &new_key.seabee_path, sig_path, &FileType::Key)?;
 
         // add to seabee
         self.verification_keys.insert(new_key.id, new_key.clone());
@@ -336,7 +340,9 @@ impl super::SeaBeePolicy {
             // remove from seabee
             self.verification_keys.remove(&new_key.id);
             // remove from fs
-            if let Err(fs_error) = fs_api::delete_seabee_file_and_sig(key_path, &FileType::Key) {
+            if let Err(fs_error) =
+                fs_api::delete_seabee_file_and_sig(&new_key.seabee_path, &FileType::Key)
+            {
                 return Err(anyhow!("failed to export new keylist:\n{e}\nFailed to remove new key from filesystem:\n{fs_error}"));
             }
             // report error
@@ -353,7 +359,12 @@ impl super::SeaBeePolicy {
         // Get target key
         let target_key = match self.get_key_by_path(&request.target_path)? {
             Some(key) => key,
-            None => return Err(anyhow!("No matching key found")),
+            None => {
+                return Err(anyhow!(
+                    "No matching key found for {}",
+                    request.target_path.display()
+                ))
+            }
         };
         if target_key.id == super::ROOT_KEY_ID {
             return Err(anyhow!("This is the root key and cannot be revoked. The root key is at '{}' and can only be changed while SeaBee is turned off.", SEABEE_ROOT_KEY_PATH));
@@ -374,7 +385,7 @@ impl super::SeaBeePolicy {
             Some(ROOT_KEY_ID),
         );
         if verify_key.is_err() && verify_root_key.is_err() {
-            // will return error
+            // if both verifications fail, return error
             verify_key?;
         }
 

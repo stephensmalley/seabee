@@ -7,12 +7,12 @@ RELEASE_SRC = target/release
 PROGRAM = seabee
 PROGRAM_SRC_DEBUG = $(DEBUG_SRC)/$(PROGRAM)
 PROGRAM_SRC_RELEASE = $(RELEASE_SRC)/$(PROGRAM)
-PROGRAM_PATH = /usr/bin/$(PROGRAM)
+PROGRAM_PATH = /usr/sbin/$(PROGRAM)
 
 CLI = seabeectl
 CLI_SRC_DEBUG = $(DEBUG_SRC)/$(CLI)
 CLI_SRC_RELEASE = $(RELEASE_SRC)/$(CLI)
-CLI_PATH = /usr/bin/$(CLI)
+CLI_PATH = /usr/sbin/$(CLI)
 
 SERVICE = seabee.service
 SERVICE_STDOUT_SRC = install/stdout.service
@@ -34,9 +34,6 @@ $(SERVICE_PATH): $(SERVICE_STDOUT_SRC) $(SERVICE_JOURNALD_SRC)
 		sudo cp $(SERVICE_STDOUT_SRC) $(SERVICE_PATH); \
 	fi
 	sudo systemctl daemon-reload
-
-$(CONFIG_PATH):
-	@sudo touch -a $(CONFIG_PATH)
 
 clean:
 	@$(CARGO) clean
@@ -61,7 +58,7 @@ daemon-enable:
 	@sudo systemctl enable $(SERVICE)
 
 # install the debug binaries and configs
-install-ci: $(SERVICE_PATH) $(CONFIG_PATH)
+install-ci: $(SERVICE_PATH)
 	sudo cp $(PROGRAM_SRC_DEBUG) $(PROGRAM_PATH)
 	sudo cp $(CLI_SRC_DEBUG) $(CLI_PATH)
 # compile and install the debug binaries and configs
@@ -106,7 +103,7 @@ gen-root-key:
 
 # Copies public key from 'gen-root-key' to the Seabee root key path
 install-root-key:
-	-mkdir /etc/seabee
+	-sudo mkdir /etc/seabee
 	sudo cp seabee-root-public-key.pem /etc/seabee/seabee_root_key.pem
 
 # format all Rust code

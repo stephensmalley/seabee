@@ -2,12 +2,6 @@
 # See all available variables at https://oxsecurity.github.io/megalinter/configuration/
 # and in linters documentation
 
-ADDITIONAL_EXCLUDED_DIRECTORIES:
-  - external
-
-# whether to automatically apply fixes
-APPLY_FIXES: none
-
 # If you use ENABLE_LINTERS variable, all other linters will be disabled
 # by default
 ENABLE_LINTERS:
@@ -29,9 +23,9 @@ PYTHON_ISORT_DISABLE_ERRORS: false
 # Remote Reporters
 EMAIL_REPORTER: false
 FILEIO_REPORTER: false
-GITHUB_COMMENT_REPORTER: false
-GITHUB_STATUS_REPORTER: false
-GITLAB_COMMENT_REPORTER: false
+GITHUB_COMMENT_REPORTER: true
+GITHUB_STATUS_REPORTER: true
+GITLAB_COMMENT_REPORTER: true
 
 # Local Reporters
 CONFIG_REPORTER: false

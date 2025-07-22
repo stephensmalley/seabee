@@ -32,3 +32,5 @@ seabee_label_process = 0
 seabee_label_map = 0
 seabee_unlabel_map = 0
 seabee_label_pin = 0
+seabee_stop_pin = 0
+seabee_start_pin = 0

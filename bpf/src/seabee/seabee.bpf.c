@@ -693,13 +693,41 @@ int BPF_PROG(seabee_unlabel_map, struct bpf_map *map, int ret)
 #endif
 
 /**
- * @brief Label an eBPF pin when it is created, using the same label as
- * the process that created it
+ * @brief Used to identify a bpf program is being pinned
  */
 SEC("lsm/bpf")
-int BPF_PROG(seabee_label_pin, int cmd, union bpf_attr *attr, unsigned int size,
+int BPF_PROG(seabee_start_pin, int cmd, union bpf_attr *attr, unsigned int size,
              int ret)
 {
-	//TODO: implement
+	if (cmd == BPF_OBJ_PIN) {
+		set_task_pinning(true);
+	}
+	return ALLOW;
+}
+
+/**
+ * @brief Label an inode associted with a bpf pin
+ *
+ * This hook is called when a dentry becomes associted with an inode.
+ */
+SEC("lsm/d_instantiate")
+int BPF_PROG(seabee_label_pin, struct dentry *dentry, struct inode *inode,
+             int ret)
+{
+	struct seabee_task_data *data = get_task_data();
+	if (data && data->pol_id != NO_POL_ID && data->is_pinning) {
+		label_inode(dentry, inode, &data->pol_id);
+	}
+	return ALLOW;
+}
+
+/**
+ * @brief Used to identify that a process has finished pinning
+ */
+SEC("tracepoint/syscalls/sys_exit_bpf")
+int BPF_PROG(seabee_stop_pin, struct dentry *dentry, struct inode *inode,
+             int ret)
+{
+	set_task_pinning(false);
 	return ALLOW;
 }

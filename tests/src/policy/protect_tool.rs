@@ -124,8 +124,5 @@ fn deny_map_access() -> Result<(), Failed> {
 }
 
 pub fn tests() -> Vec<Trial> {
-    vec![
-        create_test!(deny_map_access),
-        create_test!(deny_remove_pin)
-    ]
+    vec![create_test!(deny_map_access), create_test!(deny_remove_pin)]
 }

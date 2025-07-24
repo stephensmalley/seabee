@@ -20,6 +20,7 @@
 /// LSM return code for denying an operation.
 #define DENY  -1
 
+extern struct inode_storage inode_storage;
 extern struct task_storage  task_storage;
 extern struct policy_map    policy_map;
 extern struct map_to_pol_id map_to_pol_id;
@@ -56,18 +57,50 @@ static __always_inline struct c_policy_config *get_policy_config(u32 policy_id)
 }
 
 /**
+ * @brief gets the data associated with current task
+ *
+ * @return the seabee_task_data for current task or NULL if task is not
+ * tracked by seabee
+ */
+static __always_inline struct seabee_task_data *get_task_data()
+{
+	struct task_struct *task = get_task();
+	return bpf_task_storage_get(&task_storage, task, 0, 0);
+}
+
+/**
  * @brief gets the policy id for a task
  *
  * @return the policy id for the task or NO_POL_ID
  */
 static __always_inline u32 get_task_pol_id()
 {
-	struct task_struct *task = get_task();
-	u32 *pol_id              = bpf_task_storage_get(&task_storage, task, 0, 0);
-	if (pol_id) {
-		return *pol_id;
+	struct seabee_task_data *data = get_task_data();
+	if (data) {
+		return data->pol_id;
 	} else {
 		return NO_POL_ID;
+	}
+}
+
+/**
+ * @brief Checks if this task is associataed with a SeaBee policy id.
+ * If so, set a flag that determines whether or not the current task is
+ * executing BPF_OBJ_PIN
+ *
+ * @param b a u32 that will be the new flag. 0 for false. 1 for true.
+ */
+static __always_inline void set_task_pinning(u32 flag)
+{
+	struct task_struct      *task = get_task();
+	struct seabee_task_data *data =
+		bpf_task_storage_get(&task_storage, task, 0, 0);
+	if (data && data->pol_id != NO_POL_ID) {
+		data->is_pinning = flag;
+		// log
+		u64 log[3]       = { (u64)task->comm, (u64)task->tgid, (u64)flag };
+		log_generic_msg(LOG_LEVEL_TRACE, LOG_REASON_DEBUG,
+		                "set task %s(%d) pinning to %lu", log, sizeof(log));
 	}
 }
 
@@ -81,16 +114,41 @@ static __always_inline void label_task(struct task_struct  *task,
                                        const unsigned char *task_name,
                                        u32                  policy_id)
 {
-	u32 *label   = bpf_task_storage_get(&task_storage, task, &policy_id,
-	                                    BPF_LOCAL_STORAGE_GET_F_CREATE);
-	u64  data[3] = { (u64)task_name, (u64)task->tgid, policy_id };
-	if (label) {
+	struct seabee_task_data  new_data      = { policy_id, 0 };
+	struct seabee_task_data *new_data_blob = bpf_task_storage_get(
+		&task_storage, task, &new_data, BPF_LOCAL_STORAGE_GET_F_CREATE);
+	u64 log[3] = { (u64)task_name, (u64)task->tgid, (u64)policy_id };
+	if (new_data_blob) {
 		log_generic_msg(LOG_LEVEL_TRACE, LOG_REASON_DEBUG,
-		                "label task %s(%d) as %d", data, sizeof(data));
-		return;
+		                "label task %s(%d) as %d", log, sizeof(log));
+	} else {
+		log_generic_msg(LOG_LEVEL_ERROR, LOG_REASON_ERROR,
+		                "failed to label task %s(%d) as %d", log, sizeof(log));
 	}
-	log_generic_msg(LOG_LEVEL_ERROR, LOG_REASON_ERROR,
-	                "failed to label task %s(%d) as %d", data, sizeof(data));
+}
+
+/**
+ * @brief label an inode with a policy id
+ *
+ * @param dentry the dentry associated with the inode
+ * @param inode the inode to label
+ * @param policy_id the label to use
+ */
+static __always_inline void label_inode(struct dentry *dentry,
+                                        struct inode *inode, u32 *policy_id)
+{
+	const unsigned char *name = dentry->d_name.name;
+	u32 *label = bpf_inode_storage_get(&inode_storage, inode, policy_id,
+	                                   BPF_LOCAL_STORAGE_GET_F_CREATE);
+	if (label) {
+		u64 data[2] = { (u64)name, *label };
+		log_generic_msg(LOG_LEVEL_TRACE, LOG_REASON_DEBUG,
+		                "label file '%s' as %d", data, sizeof(data));
+	} else {
+		u64 data[1] = { (u64)name };
+		log_generic_msg(LOG_LEVEL_ERROR, LOG_REASON_ERROR,
+		                "failed to label file: %s", data, sizeof(data));
+	}
 }
 
 /**

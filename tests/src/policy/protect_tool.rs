@@ -84,16 +84,15 @@ pub fn stop_test_tool(child: Child) -> Result<()> {
     Ok(())
 }
 
-// TODO: fully implement pin protections
-// fn deny_remove_pin() -> Result<(), Failed> {
-//     match std::fs::remove_file(TEST_TOOL_PIN) {
-//         Err(e) => match e.kind() {
-//             std::io::ErrorKind::PermissionDenied => Ok(()),
-//             k => Err(format!("Got: ErrorKind {k}, Expected: PermissionDenied").into()),
-//         },
-//         Ok(()) => Err("Got: Ok, Expected: Err".into()),
-//     }
-// }
+fn deny_remove_pin() -> Result<(), Failed> {
+    match std::fs::remove_file(TEST_TOOL_PIN) {
+        Err(e) => match e.kind() {
+            std::io::ErrorKind::PermissionDenied => Ok(()),
+            k => Err(format!("Got: ErrorKind {k}, Expected: PermissionDenied").into()),
+        },
+        Ok(()) => Err("Got: Ok, Expected: PermissionDenied".into()),
+    }
+}
 
 #[derive(Debug, Deserialize)]
 struct ProgInfo {
@@ -125,8 +124,5 @@ fn deny_map_access() -> Result<(), Failed> {
 }
 
 pub fn tests() -> Vec<Trial> {
-    vec![
-        create_test!(deny_map_access),
-        //create_test!(deny_remove_pin)
-    ]
+    vec![create_test!(deny_map_access), create_test!(deny_remove_pin)]
 }

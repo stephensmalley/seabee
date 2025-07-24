@@ -9,14 +9,19 @@
 #include "bpf/bpf_helpers.h"
 #include "shared_rust_types.h"
 
+struct seabee_task_data {
+	u32 pol_id;
+	u32 is_pinning; // treated like a bool
+};
+
 struct task_storage {
 	__uint(type, BPF_MAP_TYPE_TASK_STORAGE);
 	// this flag is required for this map type
 	__uint(map_flags, BPF_F_NO_PREALLOC);
 	// must be 4 bytes
 	__type(key, u32);
-	// policy id
-	__type(value, u32);
+	// seabee task data
+	__type(value, struct seabee_task_data);
 };
 
 struct inode_storage {

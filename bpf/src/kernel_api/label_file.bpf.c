@@ -70,23 +70,12 @@ int BPF_PROG(seabee_label_target_file, struct inode *dir, struct dentry *dentry)
 		return ALLOW;
 	}
 
-	// lookup filename, then collect inode and dev
+	// get policy_id and label inode
 	u32 *policy_id = bpf_map_lookup_elem(&filename_to_policy_id, &name_copy);
-
 	if (policy_id) {
-		u32 *label = bpf_inode_storage_get(&inode_storage, dentry->d_inode,
-		                                   policy_id,
-		                                   BPF_LOCAL_STORAGE_GET_F_CREATE);
-		if (label) {
-			u64 data[2] = { (u64)name, *label };
-			log_generic_msg(LOG_LEVEL_TRACE, LOG_REASON_DEBUG,
-			                "label file '%s' as %d", data, sizeof(data));
-			// we don't want to delete file, just label it
-			return DENY;
-		}
-		u64 data[1] = { (u64)name };
-		log_generic_msg(LOG_LEVEL_ERROR, LOG_REASON_ERROR,
-		                "failed to label file: %s", data, sizeof(data));
+		label_inode(dentry, dentry->d_inode, policy_id);
+		// we don't actually want to delete this inode
+		return DENY;
 	}
 
 	return ALLOW;

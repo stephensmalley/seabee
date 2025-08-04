@@ -7,9 +7,9 @@
 #include <linux/module.h> /* Needed by all modules */
 #include <linux/kernel.h> /* Needed for KERN_INFO */
 
-int init_module(void)
+static int __init hello_init(void)
 {
-	printk(KERN_INFO "Hello world 1.\n");
+	printk(KERN_INFO "Hello world\n");
 
 	/*
 	 * A non 0 return means init_module failed; module can't be loaded.
@@ -17,9 +17,13 @@ int init_module(void)
 	return 0;
 }
 
-void cleanup_module(void)
+static void __exit hello_exit(void)
 {
-	printk(KERN_INFO "Goodbye world 1.\n");
+	printk(KERN_INFO "Goodbye world\n");
 }
 
+module_init(hello_init);
+module_exit(hello_exit);
+
 MODULE_LICENSE("GPL");
+MODULE_DESCRIPTION("A simple hello world kernel module for testing");

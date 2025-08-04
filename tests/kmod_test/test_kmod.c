@@ -107,3 +107,5 @@ module_init(test_kmod_init);
 module_exit(test_kmod_exit);
 
 MODULE_LICENSE("GPL");
+MODULE_DESCRIPTION(
+	"This is a test kernel module that is sent a predefined command from userspace and executes it");

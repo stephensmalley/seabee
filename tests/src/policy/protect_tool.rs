@@ -103,7 +103,10 @@ fn deny_map_access() -> Result<(), Failed> {
     let output = Command::new("bpftool")
         .args(["prog", "show", "name", TEST_PROG_NAME, "-p"])
         .output()?;
-    let json_out: ProgInfo = serde_json::from_str(&String::from_utf8(output.stdout)?)?;
+    let stdout = String::from_utf8(output.stdout)?;
+    let stderr = String::from_utf8(output.stderr)?;
+    let json_out: ProgInfo = serde_json::from_str(&stdout)
+        .map_err(|e| anyhow!("serde_json failed read output of 'bpftool prog show name {TEST_PROG_NAME} -p'\n{e}\nbpftool stdout: {stdout}\nbpftool stderr:{stderr}"))?;
 
     let mut found_map = false;
     for id in json_out.map_ids {

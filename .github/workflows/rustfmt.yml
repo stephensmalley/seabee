@@ -1,5 +1,5 @@
 ---
-name: Rust Format and Clippy
+name: rustfmt
 
 on:
   push:
@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
+      # This could be optimized to use a smaller image
       image: ghcr.io/nationalsecurityagency/seabee:build
 
     steps:
@@ -19,6 +20,3 @@ jobs:
 
       - name: Check formatting
         run: cargo fmt -- --check
-
-      - name: Run Clippy
-        run: cargo clippy --all-targets --all-features --no-deps

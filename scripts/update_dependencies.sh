@@ -54,7 +54,9 @@ python_check() {
 rust_check() {
   if ! command -V "$RUSTUP" &>/dev/null; then
     printf "Rustup not detected. Installing...\n"
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --profile default stable -y
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    # shellcheck disable=SC1091
+    source "$HOME/.cargo/env"
   fi
   # Install rust lints
   rustup component add rustfmt clippy

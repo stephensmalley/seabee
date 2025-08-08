@@ -1,0 +1,36 @@
+---
+name: Test Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  packages: read
+
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        distro:
+          # - fedora-41
+          # - fedora-42
+          - ubuntu-jammy
+          # - ubuntu-noble
+          # - rocky-9
+
+    container:
+      image: ghcr.io/nationalsecurityagency/seabee-build-${{ matrix.distro }}:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Run `make release`
+        run: make release

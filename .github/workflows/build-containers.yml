@@ -2,10 +2,9 @@
 name: Build and Push Containers
 
 on:
-  push:
-  #TODO: remove this on PR, only do this on pushes to main
-  pull_request:
-    branches: [main]
+  schedule:
+    - cron: '11 11 * * 6'  # Choosing an random non-peak time: every Saturday at 11:11 UTC
+  workflow_dispatch:
 
 env:
   REPO: nationalsecurityagency/seabee

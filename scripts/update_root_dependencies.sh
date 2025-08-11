@@ -49,7 +49,7 @@ install_system_packages() {
       perl
   elif [ $USE_DNF -eq 1 ]; then
     dnf update -y
-    dnf install \
+    dnf install -y \
       "${common_deps[@]}" \
       "${library_deps_dnf[@]}" \
       perl-core

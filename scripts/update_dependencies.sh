@@ -32,7 +32,7 @@ python_check() {
   if ! command -v "$PYTHON" &>/dev/null || ! version_greater_equal "$($PYTHON --version | cut -d" " -f2)" $PYTHON_VERSION; then
     printf "Compatible Python version not detected\n"
     printf "Please install Python %s or newer\n" "$PYTHON_VERSION"
-    exit
+    exit 1
   fi
   if ! command -v "$POETRY" &>/dev/null || ! version_greater_equal "$($POETRY --version | cut -d" " -f3 | tr -d ')')" $POETRY_VERSION; then
     printf "Compatible version of Poetry not detected\n"

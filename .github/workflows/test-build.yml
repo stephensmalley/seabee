@@ -11,13 +11,14 @@ jobs:
   test-build:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         distro:
-          # - fedora-41
-          # - fedora-42
+          - fedora-41
+          - fedora-42
           - ubuntu-jammy
-          # - ubuntu-noble
-          # - rocky-9
+          - ubuntu-noble
+          - rocky-9
 
     container:
       image: ghcr.io/nationalsecurityagency/seabee-build-${{ matrix.distro }}:latest

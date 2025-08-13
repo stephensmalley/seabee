@@ -3,18 +3,23 @@ name: rustfmt
 
 on:
   push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
   lint:
     runs-on: ubuntu-latest
 
     container:
-      # This could be optimized to use a smaller image
-      image: ghcr.io/nationalsecurityagency/seabee:build
+      image: docker.io/rust:slim
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Install rustfmt
+        run: rustup component add rustfmt
 
       - name: Check formatting
         run: cargo fmt -- --check

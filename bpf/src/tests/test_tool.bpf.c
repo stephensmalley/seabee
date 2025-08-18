@@ -18,7 +18,7 @@ struct {
 	__uint(max_entries, 4096);
 } ringbuf SEC(".maps");
 
-struct log_entry {
+struct seabee_test_log_entry {
 	char name[LOG_SIZE];
 };
 
@@ -29,7 +29,7 @@ SEC("lsm/file_open")
 int BPF_PROG(test_seabee, struct file *file)
 {
 	// reserve ringbuf space
-	struct log_entry *log = bpf_ringbuf_reserve(&ringbuf, LOG_SIZE, 0);
+	struct seabee_test_log_entry *log = bpf_ringbuf_reserve(&ringbuf, LOG_SIZE, 0);
 	if (!log) {
 		bpf_printk("Unable to reserve from ringbuf of size %lu", LOG_SIZE);
 		return ALLOW;

@@ -34,7 +34,7 @@ struct ThreadControl {
 fn start_seabee_with_logging(
     config: Config,
     open_obj: &mut MaybeUninit<OpenObject>,
-) -> Result<(SeaBee, ThreadControl)> {
+) -> Result<(SeaBee<'_>, ThreadControl)> {
     config::init_paths()?;
     let sb = seabee::seabee_init(config, open_obj)?;
     let stop_trigger = Arc::new(AtomicBool::new(true));

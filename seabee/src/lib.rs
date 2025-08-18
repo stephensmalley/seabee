@@ -57,7 +57,7 @@ impl std::fmt::Debug for SeaBee<'_> {
 /// 1. First the 'enforce skeleton' containing eBPF LSM programs is loaded.
 /// 1. Next, 'policy skeleton' is laoded containing programs for updating policy.
 /// 1. Each program is attached to its hook point and pinned to the eBPF filesystem.
-pub fn seabee_init(config: Config, open_obj: &mut MaybeUninit<OpenObject>) -> Result<SeaBee> {
+pub fn seabee_init(config: Config, open_obj: &mut MaybeUninit<OpenObject>) -> Result<SeaBee<'_>> {
     // set the static LOG_LEVEL so that it can be used by various skeletons
     LOG_LEVEL.get_or_init(|| config.log_level);
     LOG_FILTER.get_or_init(|| config.log_filter.clone());

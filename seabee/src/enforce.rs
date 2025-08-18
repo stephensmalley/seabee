@@ -30,7 +30,7 @@ pub fn load_ebpf(
     config: Config,
     policy: SeaBeePolicy,
     open_obj: &mut MaybeUninit<OpenObject>,
-) -> Result<SeaBee> {
+) -> Result<SeaBee<'_>> {
     // Build and load skeleton
     let mut skel = edit_seabee_skel(&config, open_obj)?;
 

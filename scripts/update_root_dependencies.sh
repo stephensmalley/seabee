@@ -35,7 +35,7 @@ os_check() {
     DISTRO="rhel"
     # Install EPEL
     # https://www.redhat.com/en/blog/whats-epel-and-how-do-i-use-it
-    dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+    dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
     ;;
   *) ;;
   esac
@@ -76,7 +76,7 @@ curl_check() {
         ca-certificates \
         curl
     elif [ $USE_DNF -eq 1 ]; then
-      dnf install curl
+      dnf install -y curl
     else
       printf "Curl dependency cannot be satisfied with this script.\n"
     fi
@@ -101,7 +101,7 @@ docker_install() {
   elif [ $USE_DNF -eq 1 ]; then
     dnf -y install dnf-plugins-core
     dnf config-manager --add-repo https://download.docker.com/linux/"$DISTRO"/docker-ce.repo
-    dnf install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+    dnf install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
     systemctl start docker
   else
     printf "Docker installation not supported for your OS.\n"

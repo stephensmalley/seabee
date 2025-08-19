@@ -58,6 +58,10 @@ install_system_packages() {
     apt install --no-install-recommends -y \
       "${common_deps[@]}" \
       "${library_deps_deb[@]}"
+    # Dependencies needed for github ci runners
+    if [ "$DOCKER" -eq 1 ]; then
+      apt install --no-install-recommends -y linux-tools-azure linux-cloud-tools-azure
+    fi
   elif [ $USE_DNF -eq 1 ]; then
     dnf update -y
     dnf install -y \

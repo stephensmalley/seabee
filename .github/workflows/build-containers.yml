@@ -1,6 +1,11 @@
 ---
 name: Build and Push Containers
 
+## Notes
+# Building SeaBee requires vmlinux for your kernel
+# vmlinux.h requires bpftool, which is also kernel specific
+# This means that the container must be build on the same system that is going to run them in order to build correctly
+
 on:
   schedule:
     - cron: '11 11 * * 6'  # Choosing an random non-peak time: every Saturday at 11:11 UTC

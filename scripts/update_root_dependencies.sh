@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 TOP_DIR=$(dirname "$(dirname "$(realpath "$0" || true)")")
 
@@ -41,6 +42,17 @@ os_check() {
   esac
 }
 
+# This builds bpftool from source which makes sure bpftool runs in the ci
+install_bpftool_ci() {
+  if [[ "$DOCKER" -eq 1 && $USE_APT -eq 1 ]]; then
+    printf "Installing bpftool from source for compatability"
+    apt-get install -y make gcc llvm git libelf-dev
+    git clone --recurse-submodules https://github.com/libbpf/bpftool.git
+    cd bpftool/src && make
+    cp bpftool /usr/local/bin/
+  fi
+}
+
 install_system_packages() {
   printf "Installing tools and libraries needed for development\n"
   # Warning: if one of 'common_deps' fails to install, they all fail to install
@@ -54,14 +66,10 @@ install_system_packages() {
   library_deps_deb=("${library_deps[@]}" autopoint pkg-config perl)
   library_deps_dnf=("${library_deps[@]}" gettext-devel perl-core)
   if [ $USE_APT -eq 1 ]; then
-    apt update
-    apt install --no-install-recommends -y \
+    apt-get update
+    apt-get install --no-install-recommends -y \
       "${common_deps[@]}" \
       "${library_deps_deb[@]}"
-    # Dependencies needed for github ci runners
-    if [ "$DOCKER" -eq 1 ]; then
-      apt install --no-install-recommends -y linux-tools-azure linux-cloud-tools-azure
-    fi
   elif [ $USE_DNF -eq 1 ]; then
     dnf update -y
     dnf install -y \
@@ -76,7 +84,7 @@ curl_check() {
   if ! command -v curl &>/dev/null; then
     printf "Attempting to install curl...\n"
     if [ $USE_APT -eq 1 ]; then
-      apt install --no-install-recommends -y \
+      apt-get install --no-install-recommends -y \
         ca-certificates \
         curl
     elif [ $USE_DNF -eq 1 ]; then
@@ -150,6 +158,7 @@ docker_check() {
 
 os_check
 install_system_packages
+install_bpftool_ci
 docker_check
 curl_check
 "$TOP_DIR"/scripts/update_test_dependencies.sh

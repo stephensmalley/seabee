@@ -4,6 +4,6 @@
 # This configuration file will include a default setting for every configuraiton option.
 
 log_level: info
-map_modification: blocked
-pin_modification: blocked
-sigint: allowed
+map_modification: block
+pin_modification: block
+sigint: allow

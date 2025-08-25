@@ -45,7 +45,7 @@ pub const KEYLIST_PATH: &str = "/etc/seabee/keylist.yaml";
 pub const SEABEE_ROOT_KEY_PATH: &str = "/etc/seabee/seabee_root_key.pem";
 
 /// The default path to the configuration file
-pub const CONFIG_PATH: &str = "/etc/seabee/config.toml";
+pub const CONFIG_PATH: &str = "/etc/seabee/config.yaml";
 
 // The path to the daemon service file, this must match the Makefile
 pub const SERVICE_PATH: &str = "/etc/systemd/system/seabee.service";

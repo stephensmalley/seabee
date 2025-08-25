@@ -2,7 +2,7 @@
 use std::{
     fs::{self, File},
     io::{ErrorKind, Read},
-    path::Path,
+    path::{Path, PathBuf},
 };
 
 use anyhow::{anyhow, Result};
@@ -62,11 +62,15 @@ pub fn file_to_bytes(file: &dyn AsRef<Path>) -> Result<Vec<u8>> {
     Ok(file_bytes)
 }
 
-pub fn str_to_abs_path(path: &str) -> Result<String> {
+pub fn str_to_abs_path_str(path: &str) -> Result<String> {
     match std::path::absolute(path)?.to_str() {
         Some(abs_path) => Ok(abs_path.to_owned()),
         None => Err(anyhow!("failed to convert '{path}' to String")),
     }
+}
+
+pub fn str_to_abs_pathbuf(path: &str) -> Result<PathBuf> {
+    Ok(std::path::absolute(path)?)
 }
 
 /// Converts a path to a u8 vector with a requested max size

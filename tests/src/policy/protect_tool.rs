@@ -33,7 +33,7 @@ const TEST_PROG_NAME: &str = "test_seabee";
 pub fn start_test_tool() -> Result<Child> {
     // add key
     Command::new(SEABEECTL_EXE)
-        .args(["add-key", "-t", &utils::str_to_abs_path(RSA_PUB)?])
+        .args(["add-key", "-t", &utils::str_to_abs_path_str(RSA_PUB)?])
         .stdout(std::process::Stdio::null())
         .status()?;
 
@@ -42,9 +42,9 @@ pub fn start_test_tool() -> Result<Child> {
         .args([
             "update",
             "-t",
-            &utils::str_to_abs_path(test_tool_config::TEST_TOOL_POLICY)?,
+            &utils::str_to_abs_path_str(test_tool_config::TEST_TOOL_POLICY)?,
             "-s",
-            &utils::str_to_abs_path(test_tool_config::TEST_TOOL_POLICY_SIG)?,
+            &utils::str_to_abs_path_str(test_tool_config::TEST_TOOL_POLICY_SIG)?,
         ])
         .stdout(std::process::Stdio::null())
         .status()?;

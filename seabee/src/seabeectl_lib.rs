@@ -126,10 +126,10 @@ pub struct SignedRequestInfo {
     /// Use the path of the key for adding or removing a key.
     /// Use the path of the policy for adding or updating a policy.
     /// Use the path to a remove request for removing a policy.
-    #[arg(short, long)]
+    #[arg(short, long, value_parser = utils::str_to_abs_pathbuf)]
     pub target_path: PathBuf,
     /// A valid signature for the object, needed if verification is enabled
-    #[arg(short, long)]
+    #[arg(short, long, value_parser = utils::str_to_abs_pathbuf)]
     pub sig_path: Option<PathBuf>,
     /// Specify the digest for the signature if not using the default (sha3-256)
     #[arg(short, long)]
@@ -227,7 +227,7 @@ pub fn execute_socket_command(command: SocketCommand) -> Result<()> {
     let mut response = String::new();
     stream.read_to_string(&mut response)?;
 
-    if response.contains("Error executing command:") {
+    if response.contains("SeaBee failed to execute command:") {
         return Err(anyhow!("{}", response));
     }
     println!("{response}");

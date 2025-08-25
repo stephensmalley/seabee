@@ -2,7 +2,7 @@
 name: test-policy
 version: 1
 scope:
-  - abcdefghijklmnopqrstuvwxyz
+  - /this/file/does/not/exist
 files:
   - /etc/seabee/config.toml
 config:

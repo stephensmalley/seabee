@@ -18,7 +18,7 @@ Should work out of the box
 
 ## RHEL/Rocky 9
 
-TODO
+Should work out of the box
 
 ## Ubuntu 22.04, 24.04
 

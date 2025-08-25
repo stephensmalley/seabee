@@ -18,7 +18,7 @@ enum SecurityLevel {
 	SECURITY_UNINIT = 0, // uninitialized
 	SECURITY_ALLOW,      // allow an action
 	SECURITY_AUDIT,      // allow an action and audit it
-	SECURITY_BLOCKED,    // deny action and audit it
+	SECURITY_BLOCK,      // deny action and audit it
 };
 
 /**

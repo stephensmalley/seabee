@@ -59,8 +59,9 @@ daemon-enable:
 
 # install the debug binaries and configs
 install-ci: $(SERVICE_PATH)
-	sudo cp $(PROGRAM_SRC_DEBUG) $(PROGRAM_PATH)
 	sudo cp $(CLI_SRC_DEBUG) $(CLI_PATH)
+	sudo cp $(PROGRAM_SRC_DEBUG) $(PROGRAM_PATH)
+
 # compile and install the debug binaries and configs
 install: all install-ci
 # install the release binaries and configs
@@ -103,7 +104,7 @@ gen-root-key:
 
 # Copies public key from 'gen-root-key' to the Seabee root key path
 install-root-key:
-	-sudo mkdir /etc/seabee
+	sudo mkdir -p /etc/seabee
 	sudo cp seabee-root-public-key.pem /etc/seabee/seabee_root_key.pem
 
 # format all Rust code

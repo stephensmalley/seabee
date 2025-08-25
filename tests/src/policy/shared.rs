@@ -6,7 +6,7 @@ use anyhow::{anyhow, Result};
 use libtest_mimic::Failed;
 use seabee::{
     constants::{self, SEABEECTL_EXE},
-    utils::str_to_abs_path,
+    utils::str_to_abs_path_str,
 };
 
 use crate::command::TestCommandBuilder;
@@ -107,7 +107,7 @@ pub fn list_keys(count: u32) -> Result<(), Failed> {
 pub fn add_key_unsigned(key: &str, expected: Expected) -> Result<(), Failed> {
     TestCommandBuilder::default()
         .program(SEABEECTL_EXE)
-        .args(&["add-key", "-t", &str_to_abs_path(key)?])
+        .args(&["add-key", "-t", &str_to_abs_path_str(key)?])
         .expected_rc(expected.rc())
         .expected_stdout(expected.out_text())
         .expected_stdout(expected.err_text())
@@ -121,9 +121,9 @@ pub fn add_key_signed(key: &str, sig: &str, expected: Expected) -> Result<(), Fa
         .args(&[
             "add-key",
             "-t",
-            &str_to_abs_path(key)?,
+            &str_to_abs_path_str(key)?,
             "-s",
-            &str_to_abs_path(sig)?,
+            &str_to_abs_path_str(sig)?,
         ])
         .expected_rc(expected.rc())
         .expected_stdout(expected.out_text())
@@ -135,7 +135,7 @@ pub fn add_key_signed(key: &str, sig: &str, expected: Expected) -> Result<(), Fa
 pub fn update_policy_unsigned(policy: &str, expected: Expected) -> Result<(), Failed> {
     TestCommandBuilder::default()
         .program(SEABEECTL_EXE)
-        .args(&["update", "-t", &str_to_abs_path(policy)?])
+        .args(&["update", "-t", &str_to_abs_path_str(policy)?])
         .expected_rc(expected.rc())
         .expected_stdout(expected.out_text())
         .expected_stderr(expected.err_text())
@@ -149,9 +149,9 @@ pub fn update_policy_signed(policy: &str, sig: &str, expected: Expected) -> Resu
         .args(&[
             "update",
             "-t",
-            &str_to_abs_path(policy)?,
+            &str_to_abs_path_str(policy)?,
             "-s",
-            &str_to_abs_path(sig)?,
+            &str_to_abs_path_str(sig)?,
         ])
         .expected_rc(expected.rc())
         .expected_stdout(expected.out_text())
@@ -163,7 +163,7 @@ pub fn update_policy_signed(policy: &str, sig: &str, expected: Expected) -> Resu
 pub fn remove_policy_unsigned(policy: &str, expected: Expected) -> Result<(), Failed> {
     TestCommandBuilder::default()
         .program(SEABEECTL_EXE)
-        .args(&["remove", "-t", &str_to_abs_path(policy)?])
+        .args(&["remove", "-t", &str_to_abs_path_str(policy)?])
         .expected_rc(expected.rc())
         .expected_stdout(expected.out_text())
         .expected_stderr(expected.err_text())
@@ -177,9 +177,9 @@ pub fn remove_policy_signed(policy: &str, sig: &str, expected: Expected) -> Resu
         .args(&[
             "remove",
             "-t",
-            &str_to_abs_path(policy)?,
+            &str_to_abs_path_str(policy)?,
             "-s",
-            &str_to_abs_path(sig)?,
+            &str_to_abs_path_str(sig)?,
         ])
         .expected_rc(expected.rc())
         .expected_stdout(expected.out_text())
@@ -191,7 +191,7 @@ pub fn remove_policy_signed(policy: &str, sig: &str, expected: Expected) -> Resu
 pub fn remove_key_unsigned(key: &str, expected: Expected) -> Result<(), Failed> {
     TestCommandBuilder::default()
         .program(SEABEECTL_EXE)
-        .args(&["remove-key", "-t", &str_to_abs_path(key)?])
+        .args(&["remove-key", "-t", &str_to_abs_path_str(key)?])
         .expected_rc(expected.rc())
         .expected_stdout(expected.out_text())
         .expected_stderr(expected.err_text())
@@ -205,9 +205,9 @@ pub fn remove_key_signed(key: &str, sig: &str, expected: Expected) -> Result<(),
         .args(&[
             "remove-key",
             "-t",
-            &str_to_abs_path(key)?,
+            &str_to_abs_path_str(key)?,
             "-s",
-            &str_to_abs_path(sig)?,
+            &str_to_abs_path_str(sig)?,
         ])
         .expected_rc(expected.rc())
         .expected_stdout(expected.out_text())

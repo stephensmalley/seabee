@@ -62,9 +62,9 @@ impl super::SeaBeePolicy {
         let mut output = self.policies.values().join("\n");
         let policy_count = self.policies.values().len();
         if policy_count == 1 {
-            output.push_str(&format!("Listed {policy_count} SeaBee Policy"));
+            output.push_str(&format!("\nListed {policy_count} SeaBee Policy"));
         } else {
-            output.push_str(&format!("Listed {policy_count} SeaBee Policies"));
+            output.push_str(&format!("\nListed {policy_count} SeaBee Policies"));
         }
         output
     }
@@ -426,7 +426,8 @@ fn get_command_from_stream(stream: &mut UnixStream) -> Result<SocketCommand> {
 fn write_result_to_stream(result: Result<String>, stream: &mut UnixStream) {
     let response = match result {
         Ok(r) => r,
-        Err(e) => format!("Error executing command: {e}"),
+        // This error string is used by seabeectl to detect SeaBee errors
+        Err(e) => format!("SeaBee failed to execute command: {e}"),
     };
 
     // write response or error

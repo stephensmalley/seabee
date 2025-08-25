@@ -1,12 +1,10 @@
-# Architecture
+# Folder Map
 
-## Folder Map
-
-### `.vscode`
+## `.vscode`
 
 Contains the settings necessary for VSCode extensions and their configurations.
 
-### `bpf`
+## `bpf`
 
 This crate contains all BPF program code (`.bpf.c` and `.h`) and Rust interfaces
   to interpret the data that comes from them in a ring buffer map.
@@ -15,25 +13,24 @@ Utility functions useful for multiple programs should be stored under the
 Do not write any BPF-related code other than BPF skeleton configuration outside
   of this crate.
 
-### `ci`
+## `ci`
 
-Contains the configurations necessary to compile, lint, and test the code on a
-  GitLab CI runner.
+Contains the configurations necessary to compile, lint, and test the code in a ci.
 See its [documentation](ci.md) for more info.
 
-### `docs`
+## `docs`
 
 Contains a majority of the high-level documentation for the project.
 
-### `scripts`
+## `scripts`
 
 Contains all of the shell scripts used for installation and configuring.
 
-### `seabee`
+## `seabee`
 
 Contains all the code specific to the SeaBee program.
 
-### `tests`
+## `tests`
 
 Contains all of the code and configurations necessary
   to run integration tests against the code to ensure the capabilities

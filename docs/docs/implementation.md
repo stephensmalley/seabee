@@ -49,6 +49,8 @@ Don't worry though, it'll look great when we're done!
 
 ### Logging for a new Skel
 
+Note: SeaBee no longer uses multiple skeletons
+
 - Setup logging in skeleton code (c code)
   - `#include "logging.h"`
   - create a global variable for log level: `u32 log_level;`

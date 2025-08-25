@@ -33,8 +33,5 @@ This document exists as a way to track what the userspace program does
 * Manipulating the BPF pinned programs through `sys_bpf`
   * open, write, read, etc.
 * prevention of blocking our necessary permissions
-* Integrate bpflock and lockdown LSM protections
 * Does mounting BPFFS in a container/namespace cause the umount protections to fail?
 * Prevent removing `bpf` from the LSM kernel command-line in the GRUB config
-* Harden against hijacking of our userspace program after all eBPF stuff is loaded
-* Provide mechanisms for other eBPF projects/programs to be protected

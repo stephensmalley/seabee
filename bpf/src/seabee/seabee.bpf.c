@@ -151,7 +151,7 @@ static __always_inline u32 decide_inode_access(enum EventType type,
 		log_inode_access(type, LOG_LEVEL_INFO, LOG_REASON_AUDIT,
 		                 dentry->d_name.name, inode_pol_id);
 		return ALLOW;
-	case SECURITY_BLOCKED:
+	case SECURITY_BLOCK:
 		log_inode_access(type, LOG_LEVEL_WARN, LOG_REASON_DENY,
 		                 dentry->d_name.name, inode_pol_id);
 		return DENY;
@@ -237,7 +237,7 @@ int BPF_PROG(seabee_bpf_map, struct bpf_map *map, fmode_t fmode, int ret)
 	case SECURITY_AUDIT:
 		log_bpf_map(LOG_LEVEL_INFO, LOG_REASON_AUDIT, map, map_pol_id);
 		return ALLOW;
-	case SECURITY_BLOCKED:
+	case SECURITY_BLOCK:
 		log_bpf_map(LOG_LEVEL_WARN, LOG_REASON_DENY, map, map_pol_id);
 		return DENY;
 	default: {
@@ -393,7 +393,7 @@ int BPF_PROG(seabee_sb_umount, struct vfsmount *mnt, int flags, int ret)
 SEC("lsm/kernel_module_request")
 int BPF_PROG(seabee_kernel_module_request, char *kmod_name)
 {
-	if (kmod_modification == (u32)SECURITY_BLOCKED) {
+	if (kmod_modification == (u32)SECURITY_BLOCK) {
 		log_kernel_module_request(LOG_LEVEL_WARN, LOG_REASON_DENY,
 		                          (const unsigned char *)kmod_name);
 		return DENY;

@@ -117,6 +117,6 @@ int main(int argc, char *argv[])
 	// read message from kernel
 	printf("Waiting for message from kernel\n");
 	recvmsg(sock_fd, &msg, 0);
-	printf("Received message payload: %s\n", NLMSG_DATA(nlh));
+	printf("Received message payload: %s\n", (char *)NLMSG_DATA(nlh));
 	close(sock_fd);
 }

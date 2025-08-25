@@ -1,4 +1,7 @@
-# Continuous Integration Workflow
+# GitLab Continuous Integration Workflow
+
+Disclaimer: these notes primarily apply to GitLab. Since the project has
+moved to GitHub, there have been substantial changes.
 
 This guide explains the thoughts and considerations behind why the CI/CD
   pipeline is setup the way it is.
@@ -18,7 +21,7 @@ Rust's built-in formatter `cargo fmt` is not available in MegaLinter and is
 ## Testing
 
 To run eBPF programs and the tests against them,
-  we need a sufficiently new enough kernel that has all of the features (v5.8+).
+  we need a sufficiently new enough kernel that has all of the features (v5.14+).
 
 To run a new enough kernel for a CI job (container or not),
   we must provide our own VM for GitLab to run the job on.
@@ -40,18 +43,13 @@ However, official Docker container providers (Ubuntu, Fendora, etc.) do not have
 In order to not incur this overhead, a custom container image can be created.
 In our case, a custom Dockerfile can be used.
 
-## Implementation
-
-Details about the Terraform configurations can be found
-  in its own repository.
-
 ## Docker Image
 
-The `ci` folder contains a Dockerfile which will install all of the
+The `ci` folder contains Dockerfiles which will install all of the
   dependencies necessary to compile, format, and document the Rust
   code.
 
-This image should be built manually on your development workstation
+These images should be built manually on your development workstation
   and then uploaded to your Docker registry server under the name `build`.
 
 ```bash

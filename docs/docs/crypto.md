@@ -22,6 +22,13 @@ private signing key should exist on a secure system that is separate from the sy
 SeaBee will require a public verification key on startup. This verification key is known as the
 "root key" because it is used to control the administration of SeaBee.
 
+- The SeaBee root public key is stored at `/etc/seabee/seabee_root_key.pem`
+  - The SeaBee root private key should be encrypted and ideally stored on separate secure system
+  - The SeaBee root key can be either an ECDSA or RSA key
+- Use `make gen-root-key` to generate an encrypted RSA keypair for SeaBee
+- Use `make install-root-key` to copy the resulting public key to `/etc/seabee/seabee_root_key.pem`
+  - The above commands require openssl installed on the system
+
 TODO: document use cases for the root key (disable, runtime config change)
 
 If SeaBee runs with the `verify-keys` option, then all keys added to SeaBee must be signed by

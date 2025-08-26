@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 
 TOP_DIR=$(dirname "$(dirname "$(realpath "$0" || true)")")
 
@@ -112,7 +111,7 @@ docker_install() {
     apt install --no-install-recommends -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
   elif [ $USE_DNF -eq 1 ]; then
     dnf -y install dnf-plugins-core
-    dnf config-manager --add-repo https://download.docker.com/linux/"$DISTRO"/docker-ce.repo
+    dnf config-manager addrepo https://download.docker.com/linux/"$DISTRO"/docker-ce.repo
     dnf install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
     systemctl start docker
   else

@@ -19,7 +19,7 @@ SERVICE_STDOUT_SRC = install/stdout.service
 SERVICE_JOURNALD_SRC = install/journald.service
 SERVICE_PATH = /etc/systemd/system/$(SERVICE)
 
-CONFIG_PATH = /etc/seabee/config.toml
+CONFIG_PATH = /etc/seabee/config.yaml
 
 .PHONY: default_target clean all release daemon-run daemon-enable install-ci install install-release-ci install-release run run-release enable enable-release test test-ci test-release test-release-ci fmt clippy ci docs update
 

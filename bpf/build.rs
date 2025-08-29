@@ -150,7 +150,8 @@ fn build(out_path: &Path, base_path: &str, ignore_files: Vec<&str>) -> Result<()
 // Creates vmlinux (truncates if exists)
 fn generate_vmlinux(out_path: &Path) -> Result<PathBuf> {
     let vmlinux_path = out_path.join("bpf/vmlinux.h");
-    let vmlinux_file = fs::File::create(&vmlinux_path)?;
+    let vmlinux_file = fs::File::create(&vmlinux_path)
+        .map_err(|e| anyhow!("failed to create vmlinux at {vmlinux_path:?}: {e}"))?;
     // bpftool is installed in the update_test_dependencies.sh which
     // is run as part of the update_root_dependencies.sh
     let status = Command::new("bpftool")
@@ -214,7 +215,7 @@ fn export_features_to_header(features: HashSet<String>, out_path: &Path) -> Resu
 
     for flag in features {
         let macro_name = flag.to_uppercase();
-        writeln!(f, "#define HAS_{}", macro_name)?;
+        writeln!(f, "#define HAS_{macro_name}")?;
     }
 
     Ok(())

@@ -70,7 +70,7 @@ pub enum CleanCommand {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum ConfigCommand {
-    /// Get the current saved config from /etc/seabee/config.toml
+    /// Get the current saved config from /etc/seabee/config.yaml
     Get,
     /// Update the current saved config while SeaBee is turned off
     Update { path: PathBuf },

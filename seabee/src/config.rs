@@ -13,7 +13,7 @@ use bpf::logging::{EventType, LogLevel};
 
 pub use crate::cli::SecurityLevel;
 use crate::cli::{args_from_cli, args_from_file, Args};
-use crate::policy::policy_file::PolicyFile;
+use crate::policy::policy_file::PolicyConfig;
 use crate::{constants::*, utils};
 use tracing::{trace, warn};
 
@@ -94,7 +94,7 @@ pub struct Config {
     pub sigint: SecurityLevel,
     pub kmod: SecurityLevel,
     pub ptrace: SecurityLevel,
-    pub policy_file: PolicyFile,
+    pub policy_config: PolicyConfig,
     pub log_filter: HashSet<EventType>,
     // will only be true during test cases
     pub test: bool,
@@ -106,16 +106,14 @@ pub struct Config {
 
 impl Default for Config {
     fn default() -> Self {
-        let policy_file = PolicyFile::base().expect("Cannot create base policy");
-
         // The default config is intended to be a secure, but usable configuration
         Self {
             log_level: LogLevel::LOG_LEVEL_INFO,
-            sigint: SecurityLevel::blocked,
+            sigint: SecurityLevel::block,
             kmod: SecurityLevel::audit,
-            ptrace: SecurityLevel::blocked,
+            ptrace: SecurityLevel::block,
+            policy_config: Default::default(),
             test: false,
-            policy_file,
             log_filter: HashSet::new(),
             verify_policy: true,
             verify_keys: false,

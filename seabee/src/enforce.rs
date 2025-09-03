@@ -13,7 +13,7 @@ use crate::{
     config::Config,
     constants, kernel_api,
     policy::{policy_file::BASE_POLICY_ID, SeaBeePolicy},
-    utils, SeaBee, SeaBeeMapHandles,
+    SeaBee, SeaBeeMapHandles,
 };
 use bpf::{common::get_map, seabee};
 
@@ -85,7 +85,6 @@ fn edit_seabee_skel<'a>(
 ) -> Result<Box<dyn Skel<'a> + 'a>> {
     let mut open_skel = seabee::SeabeeSkelBuilder::default().open(open_obj)?;
     open_skel.maps.bss_data.my_pid = std::process::id();
-    open_skel.maps.bss_data.sigmask = utils::generate_sigmask(config.sigint);
     open_skel.maps.bss_data.bpf_dev_id = dev_id(constants::BPF_PATH)?;
     open_skel.maps.bss_data.sys_dev_id = dev_id(constants::SYS_PATH)?;
     // Set which level of logs will be printed

@@ -5,6 +5,8 @@ scope:
   - ../target/release/test_tool
 files:
 config:
-  map_access: blocked
-  file_write_access: blocked
-  pin_access: blocked
+  map_access: block
+  file_write_access: block
+  pin_access: block
+  signals: block
+  sigmask: 0x8430002

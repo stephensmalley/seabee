@@ -7,9 +7,9 @@ use libtest_mimic::{Failed, Trial};
 use seabee::{constants::SEABEECTL_EXE, utils};
 use serde::Deserialize;
 
-use crate::{command::TestCommandBuilder, create_test};
+use crate::{command::TestCommandBuilder, create_test, test_utils};
 
-use super::shared::RSA_PUB;
+use super::{shared::RSA_PUB, TEST_TOOL_PID};
 
 // use debug policy for debug build
 #[cfg(debug_assertions)]
@@ -126,6 +126,21 @@ fn deny_map_access() -> Result<(), Failed> {
     Ok(())
 }
 
+// Check that a null/0 signal can be sent to the process
+fn allow_signal_null() -> Result<(), Failed> {
+    test_utils::try_kill(0, *TEST_TOOL_PID.get().unwrap(), true)
+}
+
+/// Check that the process survives a SIGKILL
+fn deny_sigkill() -> Result<(), Failed> {
+    test_utils::try_kill(libc::SIGKILL, *TEST_TOOL_PID.get().unwrap(), false)
+}
+
 pub fn tests() -> Vec<Trial> {
-    vec![create_test!(deny_map_access), create_test!(deny_remove_pin)]
+    vec![
+        create_test!(deny_map_access),
+        create_test!(deny_remove_pin),
+        create_test!(allow_signal_null),
+        create_test!(deny_sigkill),
+    ]
 }

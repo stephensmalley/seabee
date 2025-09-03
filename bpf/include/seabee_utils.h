@@ -57,6 +57,20 @@ static __always_inline struct c_policy_config *get_policy_config(u32 policy_id)
 }
 
 /**
+ * @brief gets the data associated with a particular task
+ *
+ * @param t target task
+ *
+ * @return the seabee_task_data for the target task or NULL if task is not
+ * tracked by seabee
+ */
+static __always_inline struct seabee_task_data *
+get_target_task_data(struct task_struct *t)
+{
+	return bpf_task_storage_get(&task_storage, t, 0, 0);
+}
+
+/**
  * @brief gets the data associated with current task
  *
  * @return the seabee_task_data for current task or NULL if task is not
@@ -65,7 +79,23 @@ static __always_inline struct c_policy_config *get_policy_config(u32 policy_id)
 static __always_inline struct seabee_task_data *get_task_data()
 {
 	struct task_struct *task = get_task();
-	return bpf_task_storage_get(&task_storage, task, 0, 0);
+	return get_target_task_data(task);
+}
+
+/**
+ * @brief gets the policy id for a target task
+ *
+ * @param t the target task
+ * @return the policy id for the task or NO_POL_ID
+ */
+static __always_inline u32 get_target_task_pol_id(struct task_struct *t)
+{
+	struct seabee_task_data *data = get_target_task_data(t);
+	if (data) {
+		return data->pol_id;
+	} else {
+		return NO_POL_ID;
+	}
 }
 
 /**
@@ -96,11 +126,13 @@ static __always_inline void set_task_pinning(u32 flag)
 	struct seabee_task_data *data =
 		bpf_task_storage_get(&task_storage, task, 0, 0);
 	if (data && data->pol_id != NO_POL_ID) {
-		data->is_pinning = flag;
-		// log
-		u64 log[3]       = { (u64)task->comm, (u64)task->tgid, (u64)flag };
-		log_generic_msg(LOG_LEVEL_TRACE, LOG_REASON_DEBUG,
-		                "set task %s(%d) pinning to %lu", log, sizeof(log));
+		// set flag if it has changed
+		if (data->is_pinning != flag) {
+			data->is_pinning = flag;
+			u64 log[3]       = { (u64)task->comm, (u64)task->tgid, (u64)flag };
+			log_generic_msg(LOG_LEVEL_TRACE, LOG_REASON_DEBUG,
+			                "set task %s(%d) pinning to %lu", log, sizeof(log));
+		}
 	}
 }
 
@@ -119,7 +151,7 @@ static __always_inline void label_task(struct task_struct  *task,
 		&task_storage, task, &new_data, BPF_LOCAL_STORAGE_GET_F_CREATE);
 	u64 log[3] = { (u64)task_name, (u64)task->tgid, (u64)policy_id };
 	if (new_data_blob) {
-		log_generic_msg(LOG_LEVEL_TRACE, LOG_REASON_DEBUG,
+		log_generic_msg(LOG_LEVEL_DEBUG, LOG_REASON_DEBUG,
 		                "label task %s(%d) as %d", log, sizeof(log));
 	} else {
 		log_generic_msg(LOG_LEVEL_ERROR, LOG_REASON_ERROR,

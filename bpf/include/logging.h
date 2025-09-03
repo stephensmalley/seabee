@@ -47,7 +47,8 @@ static inline void *log_buf(enum LogLevel level, enum LogReason reason,
 
 	void *log = bpf_ringbuf_reserve(&log_ringbuf, size, 0);
 	if (!log) {
-		bpf_printk("Unable to reserve from ringbuf of size %lu", size);
+		bpf_printk("seabee log_buf: unable to reserve from ringbuf of size %lu",
+		           size);
 		return NULL;
 	}
 

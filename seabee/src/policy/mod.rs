@@ -54,7 +54,7 @@ impl SeaBeePolicy {
 
         Ok(Self {
             policies: HashMap::default(),
-            base_policy: config.policy_file.clone(),
+            base_policy: PolicyFile::base(config)?,
             next_policy_id: policy_file::BASE_POLICY_ID + 1,
             verification_keys,
             verify_policy: config.verify_policy,

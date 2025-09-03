@@ -21,6 +21,7 @@ seccompiler = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_derive = "1.0"
 serde_json.workspace = true
+serde_with = "3.14.0"
 serde_yaml = "0.9" # this create is deprecated, but is still the best for the job it seems
 strum.workspace = true
 strum_macros.workspace = true

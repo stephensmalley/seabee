@@ -27,11 +27,11 @@ pub struct PolicyConfig {
     pub pin_access: SecurityLevel,
     /// Protection level for files
     pub file_write_access: SecurityLevel,
-    /// Determines whether or not to block signals
+    /// Determines how to apply signal mask
     pub signals: SecurityLevel,
-    /// Determines which signals should get blocked
+    /// Determines which signals should be allowed
     #[serde_as(as = "DisplayFromStr")] // allows hex formatting
-    pub sigmask: u64,
+    pub signal_allow_mask: u64,
 }
 
 /// Use block as default for security
@@ -44,7 +44,7 @@ impl Default for PolicyConfig {
             file_write_access: SecurityLevel::block,
             signals: SecurityLevel::block,
             // generate a sigmask for all signals that can kill a process
-            sigmask: utils::generate_sigmask(SecurityLevel::block),
+            signal_allow_mask: utils::generate_sigmask(SecurityLevel::block),
         }
     }
 }
@@ -56,7 +56,7 @@ impl PolicyConfig {
             map_access: self.map_access as u8,
             pin_removal: self.pin_access as u8,
             signals: self.signals as u8,
-            sigmask: self.sigmask,
+            sigmask: self.signal_allow_mask,
             padding: 0,
         }
     }

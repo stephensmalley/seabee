@@ -199,7 +199,7 @@ impl From<Args> for PolicyConfig {
             pin_access: args.pin_modification.unwrap(),
             file_write_access: args.daemon_modification.unwrap(),
             signals: SecurityLevel::block,
-            sigmask: utils::generate_sigmask(args.sigint.unwrap()),
+            signal_allow_mask: utils::generate_sigmask(args.sigint.unwrap()),
         }
     }
 }

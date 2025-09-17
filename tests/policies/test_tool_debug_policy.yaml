@@ -9,4 +9,4 @@ config:
   file_write_access: block
   pin_access: block
   signals: block
-  sigmask: 0x8430002
+  signal_allow_mask: 0x8430002

@@ -126,12 +126,17 @@ fn deny_map_access() -> Result<(), Failed> {
     Ok(())
 }
 
-// Check that a null/0 signal can be sent to the process
+/// Check that a null/0 signal can be sent to the process
 fn allow_signal_null() -> Result<(), Failed> {
     test_utils::try_kill(0, *TEST_TOOL_PID.get().unwrap(), true)
 }
 
-/// Check that the process survives a SIGKILL
+// /Check that a an allowed signal is allowed
+fn allow_signal_winch() -> Result<(), Failed> {
+    test_utils::try_kill(libc::SIGWINCH, *TEST_TOOL_PID.get().unwrap(), true)
+}
+
+/// Check that a blocked signal is blocked
 fn deny_sigkill() -> Result<(), Failed> {
     test_utils::try_kill(libc::SIGKILL, *TEST_TOOL_PID.get().unwrap(), false)
 }
@@ -141,6 +146,7 @@ pub fn tests() -> Vec<Trial> {
         create_test!(deny_map_access),
         create_test!(deny_remove_pin),
         create_test!(allow_signal_null),
+        create_test!(allow_signal_winch),
         create_test!(deny_sigkill),
     ]
 }

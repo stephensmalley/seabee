@@ -27,8 +27,6 @@ u32 log_level;
 u32 kmod_modification;
 /// @brief The process id of the userspace that loads these programs
 u32 my_pid;
-/// @brief A mask of the signals allowed to be sent to {@link my_pid}
-u64 sigmask;
 /// @brief The device id of the /sys/bpf mount point inode
 u64 bpf_dev_id;
 /// @brief The device id of the /sys mount point inode
@@ -299,28 +297,46 @@ int BPF_PROG(seabee_task_kill, struct task_struct *p,
              struct kernel_siginfo *info, int sig, const struct cred *cred,
              int ret)
 {
-	// we use p->tgid instead of p->pid because p->pid actually gives tid for threads.
-	// we want to protect all threads in out thread group (process)
-	int target_pid = BPF_CORE_READ(p, tgid);
-	int sender_pid = -1;
-	// if this produces a compiler warning, it is okay
-	if (info != NULL && (long)info != 1) {
-		sender_pid = BPF_CORE_READ(info, _sifields._kill._pid);
+	// allow if no seabee policy
+	u32 target_pol_id = get_target_task_pol_id(p);
+	if (!target_pol_id) {
+		return ALLOW;
+	}
+	// allow if same seabee policy
+	u32 sender_pol_id = get_task_pol_id();
+	if (target_pol_id == sender_pol_id) {
+		return ALLOW;
+	}
+	// allow if no policy has been removed
+	struct c_policy_config *cfg = get_policy_config(target_pol_id);
+	if (!cfg) {
+		return ALLOW;
+	}
+	// allow if policy config is allow
+	if (cfg->signals == SECURITY_ALLOW) {
+		return ALLOW;
+	}
+	// allow if not blocked by sigmask
+	if (sig == ZERO || (1ULL << (sig - 1)) & cfg->sigmask) {
+		return ALLOW;
 	}
 
-	// Deny any process from killing my group
-	if (target_pid == my_pid) {
-		// compare signal with sigmask
-		if (sig == ZERO || (1ULL << (sig - 1)) & sigmask) {
-			log_task_kill(LOG_LEVEL_DEBUG, LOG_REASON_ALLOW, target_pid,
-			              p->comm, sig);
-			return ALLOW;
-		}
-		log_task_kill(LOG_LEVEL_WARN, LOG_REASON_DENY, target_pid, p->comm,
-		              sig);
+	bpf_printk("signal %d, policy: %d, security: %d", sig, target_pol_id,
+	           cfg->signals);
+	// otherwise audit or block and log
+	if (cfg->signals == SECURITY_AUDIT) {
+		log_task_kill(LOG_LEVEL_DEBUG, LOG_REASON_ALLOW, p, sig, target_pol_id);
+		return ALLOW;
+	} else if (cfg->signals == SECURITY_BLOCK) {
+		log_task_kill(LOG_LEVEL_WARN, LOG_REASON_DENY, p, sig, target_pol_id);
+		return DENY;
+	} else {
+		u64 data[] = { cfg->signals };
+		log_generic_msg(LOG_LEVEL_ERROR, LOG_REASON_ERROR,
+		                "task_kill: nonexistent security level: %d", data,
+		                sizeof(data));
 		return DENY;
 	}
-	return ALLOW;
 }
 
 // from include/linux/fs.h
@@ -646,7 +662,8 @@ int BPF_PROG(seabee_label_child_process, struct task_struct *child_task,
 {
 	u32 parent_task_pol_id = get_task_pol_id();
 	if (parent_task_pol_id != NO_POL_ID) {
-		label_task(child_task, child_task->comm, parent_task_pol_id);
+		label_task(child_task, (const unsigned char *)child_task->comm,
+		           parent_task_pol_id);
 	}
 
 	return ALLOW;

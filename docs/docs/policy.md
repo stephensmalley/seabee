@@ -57,26 +57,94 @@ for testing/debugging, an action could be changed to 'audit' or bpftool could be
 
 ## Policy Anatomy
 
-a policy has four parts: scope, config, hash, and signature
+a policy is a yaml file and has the following keys
+
+### Name
+
+The name of the policy
+
+### Version
+
+The version should be incremented when a policy is updated. The version ensures
+that an attacker cannot downgrade the policy to an old version or maliciously update
+a policy.
 
 ### Scope
 
 - a file path, determines which binaries the policy applies to
 
-### Config
+### Files
 
-- determines what protections this policy provides within the `scope`
-- `files` in this section determine how files are protected by the policy
-it may be the case that there are repeated files between `scope` and `config`.
+determines which files are protected by the policy
+it may be the case that there are repeated files between `scope` and `files`.
 This would be the case if you wanted to prevent an executable from being modified
 and allow a process created by that executable permissions to access other objects in the policy.
 
-### Version
+### Config
 
-- the version should be incremented when a policy is updated. The version ensures
-that an attacker cannot downgrade the policy to an old version or maliciously update
-a policy.
+The policy config determines what protections this policy provides within the `scope`.
 
-### Examples
+config has the following keys:
 
-test policies can be seen at `tests/policies`
+- map_access: control access to eBPF maps within the scope (allow, audit, block)
+- file_write_access: control write access to the files listed in `files` seciton (allow, audit, block)
+- pin_access: control access to removing eBPF pins (allow, audit, block)
+- signals: control how to enforce the sigmask (allow, audit, block)
+- sigmask: determines which signals should be allowed
+
+### Sigmask
+
+The sigmask requires further explanation. The sigmask allows a user to precisly control which signals are allowed
+to be sent to a process within scope. To construct a sigmask, you need to first enumerate the codes for each signal
+you want to allow. For example, if you want to allow SIGINT, you should get code 2.
+
+The sigmask is a `u64` so it covers all possible signals including RT signals 32 through 64.
+The null signal is not part of the standard signal set and there cannot be blocked
+We construct the sigmask by taking the code for each signal we want to block, subtracting 1,
+and flipping that bit to a 1 `(1<<(CODE-1))`. For SIGINT, we do `(1<<1)` and get `0x2`.
+
+The `0x2` sigmask will allow SIGINT but block all other signals to the process (if `signals` is set to `block`)
+
+Setting `signals: allow` will cause the sigmask to be ignored altogether.
+
+Sigmask can be specified as a hex or a decimal in the policy
+
+We use this sigmask by default for SeaBee: `0x8430000`. This allows all signals that don't kill the process by default.
+We generate the sigmask with the following code (from `seabee/src/utils.rs`)
+
+```Rust
+/// Generates a [mask](https://en.wikipedia.org/wiki/Mask_(computing))
+/// of allowed signals
+pub const fn generate_sigmask(sigint: SecurityLevel) -> u64 {
+    let mut sigmask: u64 = 0;
+    // These signals are those that do not terminate a process by default
+    sigmask |= 1 << (Signal::SIGCHLD as u64 - 1);
+    sigmask |= 1 << (Signal::SIGCONT as u64 - 1);
+    sigmask |= 1 << (Signal::SIGURG as u64 - 1);
+    sigmask |= 1 << (Signal::SIGWINCH as u64 - 1);
+
+    if is_sigint_allowed(sigint) {
+        sigmask |= 1 << (Signal::SIGINT as u64 - 1);
+    }
+    sigmask
+}
+```
+
+## Examples
+
+more test policies can be seen at `tests/policies`
+
+```yaml
+name: sample-policy
+version: 1
+scope:
+  - ../usr/sbin/my-ebpf-tool
+files:
+  - /etc/my-ebpf-tool/
+config:
+  map_access: block
+  file_write_access: block
+  pin_access: block
+  signals: block
+  signal_allow_mask: 0x8430002
+```

@@ -6,6 +6,8 @@ SeaBee has various configuration options and various ways to apply them.
 
 All the configuration code can be viewed in `seabee/src/config.rs` and `seabee/src/cli.rs`.
 
+View config help menu with `seabee --help`
+
 Configuration cannot be updated while SeaBee is running.
 
 ## Default Configuration
@@ -32,7 +34,7 @@ This effectively means the controller of the root key must authorize every other
 
 at startup, SeaBee pulls configuration information from `/etc/seabee/config.yaml`
 
-For conveinance, this file can be updated while SeaBee is turned off via `seabeectl config`
+For convenience, this file can be updated while SeaBee is turned off via `seabeectl config`
 
 This file can accept all of the same key-value pairs as the command line.
 See `tests/configs` for some example configuraiton files

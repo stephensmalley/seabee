@@ -30,9 +30,12 @@ enum SecurityLevel {
  * by the rust bindings we generate based on this code.
  */
 struct c_policy_config {
-	unsigned char file_modification;
-	unsigned char map_access;
-	unsigned char pin_removal;
+	unsigned long long sigmask;           // 8
+	unsigned char      signals;           // 1
+	unsigned char      file_modification; // 1
+	unsigned char      map_access;        // 1
+	unsigned char      pin_removal;       // 1
+	unsigned int       padding;           // 4
 };
 
 #endif

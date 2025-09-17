@@ -12,6 +12,8 @@
 #include "seabee_utils.h"
 #include "logging.h"
 
+#define SIGCONT 18
+
 /// License of the BPF program
 char LICENSE[] SEC("license") = "GPL";
 
@@ -28,18 +30,25 @@ struct task_storage task_storage SEC(".maps");
 struct log_ringbuf log_ringbuf   SEC(".maps");
 
 /**
- * @brief This hook was chosen to label files because it is an LSM
- * making it relatively stable, it is simple to trigger, and it will
- * not be called many times during the duration of the program,
- * making it low overhead.
-*/
-SEC("lsm/file_open")
-int BPF_PROG(seabee_label_target_process, struct file *file)
+ * @brief Label a target process by signaling it
+ *
+ * @param p target process
+ * @param info signal info, can also be NULL or 1
+ * @param sig signal value
+ * @param cred credentials of sender, may be NULL
+ * @param ret the return code of the previous LSM hook
+ *
+ * @return {@link ALLOW} or {@link DENY}
+ *
+ * @see signal numbering and default actions: `man signal`
+ */
+SEC("lsm/task_kill")
+int BPF_PROG(seabee_label_target_task, struct task_struct *p,
+             struct kernel_siginfo *info, int sig, const struct cred *cred,
+             int ret)
 {
-	if (get_pid() == user_pid) {
-		struct task_struct *task = get_task();
-		label_task(task, task->comm, policy_id);
+	if (get_pid() == user_pid && sig == SIGCONT) {
+		label_task(p, p->comm, policy_id);
 	}
-
 	return ALLOW;
 }

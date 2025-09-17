@@ -46,14 +46,14 @@ static inline void log_kernel_module_request(enum LogLevel        level,
 }
 
 static inline void log_task_kill(enum LogLevel level, enum LogReason reason,
-                                 int target_pid, char *target_comm, int signum)
+                                 struct task_struct *t, int signum,
+                                 unsigned int pol_id)
 {
 	struct task_kill_log *log;
-	log = log_buf(level, reason, EVENT_TYPE_TASK_KILL, sizeof(*log), NO_POL_ID);
+	log = log_buf(level, reason, EVENT_TYPE_TASK_KILL, sizeof(*log), pol_id);
 	if (log) {
-		log->target_pid = target_pid;
-		bpf_probe_read_str(log->target_comm, sizeof(log->target_comm),
-		                   target_comm);
+		log->target_pid = t->tgid;
+		bpf_probe_read_str(log->target_comm, sizeof(log->target_comm), t->comm);
 		log->signum = signum;
 		bpf_ringbuf_submit(log, 0);
 	}

@@ -6,7 +6,7 @@ use anyhow::{anyhow, Result};
 use clap::{Parser, ValueEnum};
 use serde::Deserialize;
 
-use crate::policy::policy_file::PolicyConfig;
+use crate::{policy::policy_file::PolicyConfig, utils};
 use bpf::logging::{EventType, LogLevel};
 
 /// The default arguments
@@ -18,17 +18,17 @@ impl Default for Args {
             // Log Level Info
             log_level: Some(LogLevelArg::info),
             // Enable map protection
-            map_modification: Some(SecurityLevel::blocked),
+            map_modification: Some(SecurityLevel::block),
             // Enable pin protection
-            pin_modification: Some(SecurityLevel::blocked),
+            pin_modification: Some(SecurityLevel::block),
             // sigint is not allowed
-            sigint: Some(SecurityLevel::blocked),
+            sigint: Some(SecurityLevel::block),
             // kernel modules are allowed
             kmod: Some(SecurityLevel::audit),
             // daemon modification is not allowed
-            daemon_modification: Some(SecurityLevel::blocked),
+            daemon_modification: Some(SecurityLevel::block),
             // ptrace is not allowed
-            ptrace: Some(SecurityLevel::blocked),
+            ptrace: Some(SecurityLevel::block),
             // nothing is excluded
             exclude: Vec::new(),
             // digital signature verification is enabled
@@ -167,37 +167,39 @@ impl Args {
 }
 
 impl From<Args> for crate::config::Config {
-    fn from(value: Args) -> Self {
+    fn from(args: Args) -> Self {
         // Should not panic since every field must have been initialized with a value from DEFAULT_ARGS
-        let mut config = Self {
-            log_level: value.log_level.unwrap().into(),
-            sigint: value.sigint.unwrap(),
-            kmod: value.kmod.unwrap(),
-            ptrace: value.ptrace.unwrap(),
+        Self {
+            log_level: args.log_level.unwrap().into(),
+            sigint: args.sigint.unwrap(),
+            kmod: args.kmod.unwrap(),
+            ptrace: args.ptrace.unwrap(),
             log_filter: {
                 let mut filter = HashSet::new();
-                for log_type in &value.exclude {
+                for log_type in &args.exclude {
                     for event_type in log_type.to_event_types() {
                         filter.insert(event_type);
                     }
                 }
                 filter
             },
-            verify_policy: value.verify_policy.unwrap(),
-            verify_keys: value.verify_keys.unwrap(),
+            verify_policy: args.verify_policy.unwrap(),
+            verify_keys: args.verify_keys.unwrap(),
+            policy_config: args.clone().into(),
             ..Default::default()
-        };
-        config.policy_file.config = value.clone().into();
-        config
+        }
     }
 }
 
+// translates Args to SeaBee base policy config
 impl From<Args> for PolicyConfig {
-    fn from(value: Args) -> Self {
+    fn from(args: Args) -> Self {
         Self {
-            map_access: value.map_modification.unwrap(),
-            pin_access: value.pin_modification.unwrap(),
-            file_write_access: value.daemon_modification.unwrap(),
+            map_access: args.map_modification.unwrap(),
+            pin_access: args.pin_modification.unwrap(),
+            file_write_access: args.daemon_modification.unwrap(),
+            signals: SecurityLevel::block,
+            signal_allow_mask: utils::generate_sigmask(args.sigint.unwrap()),
         }
     }
 }
@@ -225,7 +227,7 @@ pub enum SecurityLevel {
     audit = 2,
     /// Full protection and audit
     #[default]
-    blocked = 3,
+    block = 3,
 }
 
 impl std::fmt::Display for SecurityLevel {
@@ -233,7 +235,7 @@ impl std::fmt::Display for SecurityLevel {
         match self {
             Self::allow => write!(f, "allow"),
             Self::audit => write!(f, "audit"),
-            Self::blocked => write!(f, "blocked"),
+            Self::block => write!(f, "block"),
         }
     }
 }

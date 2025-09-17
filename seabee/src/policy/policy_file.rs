@@ -7,31 +7,44 @@ use std::{
 use anyhow::{anyhow, Context, Result};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 
-use crate::{config::SecurityLevel, constants, crypto, utils};
+use crate::{
+    config::{Config, SecurityLevel},
+    constants, crypto, utils,
+};
 
 const NO_POLICY_ID: u32 = bpf::seabee::NO_POL_ID;
 pub const BASE_POLICY_ID: u32 = bpf::seabee::BASE_POLICY_ID;
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(default)]
+#[serde_as]
 pub struct PolicyConfig {
     /// Select map security level
     pub map_access: SecurityLevel,
-
     /// Select pin security level
     pub pin_access: SecurityLevel,
-
     /// Protection level for files
     pub file_write_access: SecurityLevel,
+    /// Determines how to apply signal mask
+    pub signals: SecurityLevel,
+    /// Determines which signals should be allowed
+    #[serde_as(as = "DisplayFromStr")] // allows hex formatting
+    pub signal_allow_mask: u64,
 }
 
-/// Use audit as default to prevent unintentional breakage of other programs that use SeaBee
+/// Use block as default for security
+/// These defaults are used for the SeaBee Config as well
 impl Default for PolicyConfig {
     fn default() -> Self {
         Self {
-            map_access: SecurityLevel::audit,
-            pin_access: SecurityLevel::audit,
-            file_write_access: SecurityLevel::audit,
+            map_access: SecurityLevel::block,
+            pin_access: SecurityLevel::block,
+            file_write_access: SecurityLevel::block,
+            signals: SecurityLevel::block,
+            // generate a sigmask for all signals that can kill a process
+            signal_allow_mask: utils::generate_sigmask(SecurityLevel::block),
         }
     }
 }
@@ -42,6 +55,9 @@ impl PolicyConfig {
             file_modification: self.file_write_access as u8,
             map_access: self.map_access as u8,
             pin_removal: self.pin_access as u8,
+            signals: self.signals as u8,
+            sigmask: self.signal_allow_mask,
+            padding: 0,
         }
     }
 }
@@ -82,7 +98,7 @@ impl PolicyFile {
         Ok(serde_yaml::from_str(&policy_str)?)
     }
 
-    pub fn base() -> Result<Self> {
+    pub fn base(config: &Config) -> Result<Self> {
         let current_exe = std::env::current_exe()?;
         let current_exe_str = current_exe
             .to_str()
@@ -96,11 +112,7 @@ impl PolicyFile {
                 String::from(constants::CONFIG_PATH),
                 String::from(constants::SEABEECTL_EXE),
             ]),
-            config: PolicyConfig {
-                map_access: SecurityLevel::blocked,
-                pin_access: SecurityLevel::blocked,
-                file_write_access: SecurityLevel::blocked,
-            },
+            config: config.policy_config.clone(),
             ..Default::default()
         })
     }

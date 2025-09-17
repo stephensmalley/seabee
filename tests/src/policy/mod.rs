@@ -2,6 +2,7 @@
 
 use std::{
     process::{Command, Stdio},
+    sync::OnceLock,
     thread, time,
 };
 
@@ -15,6 +16,8 @@ mod shared;
 mod unverified_policy;
 mod verified_keys;
 mod verified_policy;
+
+pub static TEST_TOOL_PID: OnceLock<u32> = OnceLock::new();
 
 const VERIFIED_POLICY_CONFIG: &str = "configs/verified_policy.yaml";
 const VERIFIED_KEYS_CONFIG: &str = "configs/verified_keys.yaml";
@@ -170,6 +173,7 @@ fn run_protect_tool_tests(args: &Arguments) -> Result<(), Failed> {
             return Err(anyhow!("failed to start test tool: {e}").into());
         }
     };
+    TEST_TOOL_PID.set(child.id())?;
     // run tests
     let conclusion = libtest_mimic::run(args, protect_tool::tests());
     // conclude tests

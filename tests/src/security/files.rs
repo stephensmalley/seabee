@@ -7,10 +7,15 @@ use std::path::PathBuf;
 /// the `target` folder and recompile since they may corrupt
 /// the binary and configs used to do testing.
 use libtest_mimic::{Failed, Trial};
+use seabee::constants;
 
-use crate::{command::TestCommandBuilder, create_test, suite::TestSuite};
+use crate::{command::TestCommandBuilder, create_test};
 
-use super::SeaBeeSecurityTestSuite;
+const PROTECTED_FILES: [&str; 3] = [
+    constants::CONFIG_PATH,
+    constants::SEABEECTL_EXE,
+    constants::SERVICE_PATH,
+];
 
 /// Attempts to remove a file testing that permission is denied
 fn try_unlink(path: &str) -> Result<(), Failed> {
@@ -46,9 +51,7 @@ fn try_write(path: &str, exe: bool) -> Result<(), Failed> {
 
 /// Tests that protected files cannot be deleted
 fn security_file_deny_unlink() -> Result<(), Failed> {
-    let config = SeaBeeSecurityTestSuite::get_custom_state()?;
-
-    for file in &config.policy_file.files {
+    for file in PROTECTED_FILES {
         try_unlink(file)?
     }
 
@@ -57,9 +60,7 @@ fn security_file_deny_unlink() -> Result<(), Failed> {
 
 /// Tests that protected files cannot be written to
 fn security_file_deny_write() -> Result<(), Failed> {
-    let config = SeaBeeSecurityTestSuite::get_custom_state()?;
-
-    for file in &config.policy_file.files {
+    for file in PROTECTED_FILES {
         try_write(file, PathBuf::from(file) == std::env::current_exe()?)?
     }
 

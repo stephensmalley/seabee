@@ -78,8 +78,8 @@ fn functional_tests(args: &Arguments, log_level: LogLevel) -> Result<(), Failed>
         ..Default::default()
     };
     // to allow the Linux state to be gathered
-    config.policy_file.config.map_access = SecurityLevel::audit;
-    config.policy_file.config.pin_access = SecurityLevel::audit;
+    config.policy_config.map_access = SecurityLevel::audit;
+    config.policy_config.pin_access = SecurityLevel::audit;
 
     let mut open_obj = MaybeUninit::uninit();
     let (sb, thread_control) = start_seabee_with_logging(config, &mut open_obj)?;
@@ -100,7 +100,7 @@ fn functional_tests(args: &Arguments, log_level: LogLevel) -> Result<(), Failed>
 fn security_tests(args: &Arguments, log_level: LogLevel) -> Result<(), Failed> {
     let config = Config {
         // don't allow kernel modules to be loaded
-        kmod: SecurityLevel::blocked,
+        kmod: SecurityLevel::block,
         // to allow an errant test to be stopped
         sigint: SecurityLevel::allow,
         // to allow other processes like kill and bpftool to run

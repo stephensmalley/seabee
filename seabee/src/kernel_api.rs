@@ -8,7 +8,7 @@ use libbpf_rs::{
     Map, MapCore, OpenObject,
 };
 
-use tracing::debug;
+use tracing::{debug, trace};
 use zerocopy::IntoBytes;
 
 use bpf::kernel_api::{label_file, label_maps, label_task};
@@ -38,6 +38,7 @@ pub fn update_kernel_policy_map(
             e
         ));
     }
+    trace!("Completed update_kernel_policy_map for id: {id}\n{config:?}");
     Ok(())
 }
 
@@ -206,8 +207,25 @@ pub fn label_seabee_process(sb: &SeaBee) -> Result<()> {
     let mut open_object = MaybeUninit::uninit();
     let _skel = load_label_task_skel(&mut open_object, sb, BASE_POLICY_ID)?;
 
-    // trigger ebpf by opening a file
-    fs::File::open("/proc/self/stat")?;
+    // signal each thread in task
+    for entry in fs::read_dir("/proc/self/task")? {
+        if let Some(name) = entry?.file_name().to_str() {
+            let tid = name.parse::<u32>().map_err(|e| {
+                anyhow!("label_seabee_process: failed to convert {name} to u32: {e}")
+            })?;
+            let tgid = process::id();
+
+            // signal thread and catch error
+            let result =
+                unsafe { libc::syscall(libc::SYS_tgkill, tgid as i32, tid as i32, libc::SIGCONT) };
+            if result != 0 {
+                return Err(anyhow!(
+                    "libc::kill returned error: {}",
+                    std::io::Error::last_os_error()
+                ));
+            }
+        }
+    }
 
     Ok(())
 }

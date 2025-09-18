@@ -111,11 +111,15 @@ type_to_security_level(enum EventType type, u32 policy_id)
 
 	switch (type) {
 	case EVENT_TYPE_FILE_OPEN:
-		return cfg->file_modification;
+		return cfg->file_write_access;
 	case EVENT_TYPE_INODE_UNLINK:
-		return cfg->pin_removal;
+		return cfg->pin_access;
 	case EVENT_TYPE_BPF_MAP:
 		return cfg->map_access;
+	case EVENT_TYPE_PTRACE_ACCESS_CHECK:
+		return cfg->ptrace_access;
+	case EVENT_TYPE_TASK_KILL:
+		return cfg->signal_access;
 	default: { // Brackets needed see: https://en.cppreference.com/w/cpp/language/switch#Notes
 		u64 data[] = { (u64)policy_id, (u64)type };
 		log_generic_msg(LOG_LEVEL_ERROR, LOG_REASON_ERROR,
@@ -280,7 +284,7 @@ int BPF_PROG(seabee_locked_down, enum lockdown_reason what)
  * almost every signal will kill our process, we choose to enumerate (and allow) those which
  * do not stop our process. Signals that originate from the kernel may not be caught because
  * they may use a different code path that does not include this lsm hook. These signals include
- * the {@link ZERO} signal and any signal specified in the {@link sigmask}
+ * the {@link ZERO} signal and any signal specified in the {@link signal_allow_mask}
  *
  * @param p target process
  * @param info signal info, can also be NULL or 1
@@ -313,25 +317,25 @@ int BPF_PROG(seabee_task_kill, struct task_struct *p,
 		return ALLOW;
 	}
 	// allow if policy config is allow
-	if (cfg->signals == SECURITY_ALLOW) {
+	if (cfg->signal_access == SECURITY_ALLOW) {
 		return ALLOW;
 	}
-	// allow if not blocked by sigmask
-	if (sig == ZERO || (1ULL << (sig - 1)) & cfg->sigmask) {
+	// allow if not blocked by signal_allow_mask
+	if (sig == ZERO || (1ULL << (sig - 1)) & cfg->signal_allow_mask) {
 		return ALLOW;
 	}
 
 	bpf_printk("signal %d, policy: %d, security: %d", sig, target_pol_id,
-	           cfg->signals);
+	           cfg->signal_access);
 	// otherwise audit or block and log
-	if (cfg->signals == SECURITY_AUDIT) {
+	if (cfg->signal_access == SECURITY_AUDIT) {
 		log_task_kill(LOG_LEVEL_DEBUG, LOG_REASON_ALLOW, p, sig, target_pol_id);
 		return ALLOW;
-	} else if (cfg->signals == SECURITY_BLOCK) {
+	} else if (cfg->signal_access == SECURITY_BLOCK) {
 		log_task_kill(LOG_LEVEL_WARN, LOG_REASON_DENY, p, sig, target_pol_id);
 		return DENY;
 	} else {
-		u64 data[] = { cfg->signals };
+		u64 data[] = { cfg->signal_access };
 		log_generic_msg(LOG_LEVEL_ERROR, LOG_REASON_ERROR,
 		                "task_kill: nonexistent security level: %d", data,
 		                sizeof(data));
@@ -485,17 +489,15 @@ int BPF_PROG(seabee_kernel_load_data, enum kernel_load_data_id id,
 }
 
 /**
- * @brief Blocks attempts to trace the seabee userspace process.
+ * @brief Blocks attempts to ptrace a protected process.
  *
- * This hook is not loaded if ptrace protections are disabled.
+ * This hook is called by a "tracer" process that is trying to use ptrace
+ * on a "tracee" process. In this case, the "child" argument.
  *
  * note: there is also an lsm/ptrace_traceme hook. This hook is not checked
- * because it is only invoked by the child process. Since our process will
- * not ask to be ptraced. We do not need to implement that hook. If our process
- * is exec'd by a process that is being ptraced already, we believe we have
- * already lost all security.
+ * because it is only invoked by the child process.
  *
- * @param child the process that is going to be traced
+ * @param child the process that is going to be traced (tracee)
  * @param mode PTRACE_MODE flags
  * @param ret the return code of the previous LSM hook
  *
@@ -505,13 +507,38 @@ SEC("lsm/ptrace_access_check")
 int BPF_PROG(seabee_ptrace_access_check, struct task_struct *child,
              unsigned int mode, int ret)
 {
-	// we use p->tgid instead of p->pid because p->pid actually gives tid for threads.
-	// we want to protect all threads in our thread group (process)
-	int tracee_pid = BPF_CORE_READ(child, tgid);
-	if (my_pid == tracee_pid) {
-		log_ptrace_access_check(LOG_LEVEL_INFO, LOG_REASON_DENY, tracee_pid,
-		                        child->comm);
-		return DENY;
+	// allow if tracee not tracked by SeaBee
+	u32 tracee_label = get_target_task_pol_id(child);
+	if (!tracee_label) {
+		return ALLOW;
+	}
+
+	// otherwise take action based on config
+	u32 tracer_label = get_task_pol_id();
+	if (tracer_label != tracee_label) {
+		enum SecurityLevel level = type_to_security_level(
+			EVENT_TYPE_PTRACE_ACCESS_CHECK, tracee_label);
+		switch (level) {
+		case SECURITY_ALLOW:
+			return ALLOW;
+		case SECURITY_AUDIT:
+			log_ptrace_access_check(LOG_LEVEL_INFO, LOG_REASON_AUDIT, child,
+			                        tracee_label);
+			return ALLOW;
+		case SECURITY_BLOCK:
+			// info level because this hook generates a lot of noise
+			log_ptrace_access_check(LOG_LEVEL_INFO, LOG_REASON_DENY, child,
+			                        tracee_label);
+			return DENY;
+		default: {
+			u64 data[] = { level };
+			log_generic_msg(
+				LOG_LEVEL_ERROR, LOG_REASON_ERROR,
+				"ptrace_access_check: nonexistent security level: %d", data,
+				sizeof(data));
+			return DENY;
+		}
+		}
 	}
 	return ALLOW;
 }

@@ -93,7 +93,6 @@ pub struct Config {
     pub log_level: LogLevel,
     pub sigint: SecurityLevel,
     pub kmod: SecurityLevel,
-    pub ptrace: SecurityLevel,
     pub policy_config: PolicyConfig,
     pub log_filter: HashSet<EventType>,
     // will only be true during test cases
@@ -111,7 +110,6 @@ impl Default for Config {
             log_level: LogLevel::LOG_LEVEL_INFO,
             sigint: SecurityLevel::block,
             kmod: SecurityLevel::audit,
-            ptrace: SecurityLevel::block,
             policy_config: Default::default(),
             test: false,
             log_filter: HashSet::new(),

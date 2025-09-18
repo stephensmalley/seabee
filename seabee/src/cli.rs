@@ -173,7 +173,6 @@ impl From<Args> for crate::config::Config {
             log_level: args.log_level.unwrap().into(),
             sigint: args.sigint.unwrap(),
             kmod: args.kmod.unwrap(),
-            ptrace: args.ptrace.unwrap(),
             log_filter: {
                 let mut filter = HashSet::new();
                 for log_type in &args.exclude {
@@ -198,7 +197,8 @@ impl From<Args> for PolicyConfig {
             map_access: args.map_modification.unwrap(),
             pin_access: args.pin_modification.unwrap(),
             file_write_access: args.daemon_modification.unwrap(),
-            signals: SecurityLevel::block,
+            ptrace_access: args.ptrace.unwrap(),
+            signal_access: SecurityLevel::block,
             signal_allow_mask: utils::generate_sigmask(args.sigint.unwrap()),
         }
     }

@@ -56,10 +56,7 @@ pub fn configure_logging(log_level: LogLevel) -> Result<()> {
                 .without_time()
                 .with_filter(filter),
         );
-        match tracing_journald::layer() {
-            Ok(layer) => registry.with(layer).init(),
-            Err(_) => tracing::error!("Unable to connect to journald"),
-        };
+        registry.init();
     });
 
     Ok(())

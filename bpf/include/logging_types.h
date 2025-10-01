@@ -163,6 +163,8 @@ struct ptrace_access_check_log {
 	struct log_hdr header;
 	/// @brief The process ID to be traced
 	int            target_pid;
+	/// @brief The ptrace mode used
+	unsigned int   mode;
 	/// @brief same as /proc/{pid}/comm for traced process
 	unsigned char  target_comm[COMM_LEN];
 };

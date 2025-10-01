@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
+
 use libtest_mimic::Failed;
+use nix::sys::{ptrace, signal::Signal::SIGCONT};
 
 /// Attempts to run `kill` with specified arguments and return code
 pub fn try_kill(signal: i32, pid: u32, expect_success: bool) -> Result<(), Failed> {
@@ -20,16 +22,36 @@ pub fn try_kill(signal: i32, pid: u32, expect_success: bool) -> Result<(), Faile
     }
 }
 
-/// Attempts PTRACE_ATTACH on target pid
-pub fn try_ptrace_attach(target_pid: u32, expect_success: bool) -> Result<(), Failed> {
+#[derive(Debug, PartialEq)]
+pub enum PtraceOp {
+    Attach,
+    Seize,
+}
+
+/// Attempts Ptrace with the given request on target pid.
+/// request could be either ATTACH or SEIZE
+pub fn try_ptrace(mode: PtraceOp, target_pid: u32, expect_success: bool) -> Result<(), Failed> {
+    // take action
     let pid = nix::unistd::Pid::from_raw(target_pid as i32);
-    // try attach and then continue
-    match nix::sys::ptrace::attach(pid) {
+    let result = match mode {
+        PtraceOp::Attach => ptrace::attach(pid),
+        PtraceOp::Seize => ptrace::seize(pid, nix::sys::ptrace::Options::empty()),
+    };
+
+    // check result
+    match result {
         Ok(_) => {
+            // continue process
+            if mode == PtraceOp::Seize {
+                ptrace::interrupt(pid)
+                    .map_err(|e| format!("failed to interrupt process {pid}: {e}"))?;
+            }
             nix::sys::wait::waitpid(pid, None)
                 .map_err(|e| format!("failed waitpid on {pid}: {e}"))?;
-            nix::sys::ptrace::cont(pid, None)
-                .map_err(|e| format!("failed to continue process {pid}: {e}"))?;
+            ptrace::detach(pid, SIGCONT)
+                .map_err(|e| format!("failed to detach and process {pid}: {e}"))?;
+
+            // check if we failed
             if !expect_success {
                 return Err(format!("Failed to block ptrace on pid {target_pid}").into());
             }
@@ -40,9 +62,10 @@ pub fn try_ptrace_attach(target_pid: u32, expect_success: bool) -> Result<(), Fa
             }
             // check that the correct error was obtained
             if e != nix::Error::EPERM {
-                return Err(format!("Ptrace attach gave unexpected error: {e}").into());
+                return Err(format!("Ptrace {mode:?} gave unexpected error: {e}").into());
             }
         }
     }
+
     Ok(())
 }

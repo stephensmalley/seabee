@@ -8,7 +8,7 @@ use crate::{create_test, test_utils};
 /// Tests whether a ptrace can be attached to the current process
 fn security_ptrace_deny_attach() -> Result<(), Failed> {
     let pid = std::process::id();
-    test_utils::try_ptrace_attach(pid, false)
+    test_utils::try_ptrace(test_utils::PtraceOp::Attach, pid, false)
 }
 
 pub fn tests() -> Vec<Trial> {

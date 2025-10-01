@@ -13,7 +13,11 @@ use libtest_mimic::{Failed, Trial};
 use seabee::{config::SecurityLevel, constants::SEABEECTL_EXE, utils};
 use serde::Deserialize;
 
-use crate::{command::TestCommandBuilder, create_test, test_utils};
+use crate::{
+    command::TestCommandBuilder,
+    create_test,
+    test_utils::{self, PtraceOp},
+};
 
 use super::shared::{RSA_PUB, RSA_PUB_ROOT_SIG};
 
@@ -195,13 +199,37 @@ fn deny_sigkill() -> Result<(), Failed> {
 }
 
 /// Check that ptrace is properly blocked
-fn deny_ptrace() -> Result<(), Failed> {
-    test_utils::try_ptrace_attach(TEST_TOOL_PID.get().unwrap().load(Ordering::SeqCst), false)
+fn deny_ptrace_attach() -> Result<(), Failed> {
+    test_utils::try_ptrace(
+        PtraceOp::Attach,
+        TEST_TOOL_PID.get().unwrap().load(Ordering::SeqCst),
+        false,
+    )
+}
+
+fn deny_ptrace_seize() -> Result<(), Failed> {
+    test_utils::try_ptrace(
+        PtraceOp::Seize,
+        TEST_TOOL_PID.get().unwrap().load(Ordering::SeqCst),
+        false,
+    )
 }
 
 /// Check that ptrace can be allowed as well
-fn allow_ptrace() -> Result<(), Failed> {
-    test_utils::try_ptrace_attach(TEST_TOOL_PID.get().unwrap().load(Ordering::SeqCst), true)
+fn allow_ptrace_attach() -> Result<(), Failed> {
+    test_utils::try_ptrace(
+        PtraceOp::Attach,
+        TEST_TOOL_PID.get().unwrap().load(Ordering::SeqCst),
+        true,
+    )
+}
+
+fn allow_ptrace_seize() -> Result<(), Failed> {
+    test_utils::try_ptrace(
+        PtraceOp::Seize,
+        TEST_TOOL_PID.get().unwrap().load(Ordering::SeqCst),
+        true,
+    )
 }
 
 fn block_tests() -> Vec<Trial> {
@@ -211,12 +239,16 @@ fn block_tests() -> Vec<Trial> {
         create_test!(allow_signal_null),
         create_test!(allow_signal_winch),
         create_test!(deny_sigkill),
-        create_test!(deny_ptrace),
+        create_test!(deny_ptrace_attach),
+        create_test!(deny_ptrace_seize),
     ]
 }
 
 fn audit_tests() -> Vec<Trial> {
-    vec![create_test!(allow_ptrace)]
+    vec![
+        create_test!(allow_ptrace_seize),
+        create_test!(allow_ptrace_attach),
+    ]
 }
 
 pub fn get_tests(level: SecurityLevel) -> Vec<Trial> {

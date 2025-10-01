@@ -6,7 +6,6 @@
  *
  * shared types for which rust bindings are generated
  */
-
 #include "constants.h"
 
 /**

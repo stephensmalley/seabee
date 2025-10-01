@@ -299,7 +299,11 @@ impl std::fmt::Display for kernel_load_data_log {
 impl std::fmt::Display for ptrace_access_check_log {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let target_comm = char_array_to_str(&self.target_comm);
-        write!(f, "ptrace {}({})", target_comm, self.target_pid)
+        write!(
+            f,
+            "ptrace mode {} on {}({})",
+            self.mode, target_comm, self.target_pid
+        )
     }
 }
 

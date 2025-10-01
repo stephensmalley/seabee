@@ -500,7 +500,7 @@ int BPF_PROG(seabee_kernel_load_data, enum kernel_load_data_id id,
  * because it is only invoked by the child process.
  *
  * @param child the process that is going to be traced (tracee)
- * @param mode PTRACE_MODE flags
+ * @param mode PTRACE_MODE flags, see linux/ptrace.h
  * @param ret the return code of the previous LSM hook
  *
  * @return {@link ALLOW} or {@link DENY}
@@ -525,12 +525,12 @@ int BPF_PROG(seabee_ptrace_access_check, struct task_struct *child,
 			return ALLOW;
 		case SECURITY_AUDIT:
 			log_ptrace_access_check(LOG_LEVEL_INFO, LOG_REASON_AUDIT, child,
-			                        tracee_label);
+			                        mode, tracee_label);
 			return ALLOW;
 		case SECURITY_BLOCK:
 			// info level because this hook generates a lot of noise
 			log_ptrace_access_check(LOG_LEVEL_INFO, LOG_REASON_DENY, child,
-			                        tracee_label);
+			                        mode, tracee_label);
 			return DENY;
 		default: {
 			u64 data[] = { level };

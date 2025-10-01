@@ -1,0 +1,12 @@
+---
+name: test-tool-policy
+version: 1
+scope:
+  - ../target/debug/test_tool
+files:
+config:
+  map_access: audit
+  file_write_access: audit
+  pin_access: audit
+  ptrace_access: audit
+  signal_access: audit

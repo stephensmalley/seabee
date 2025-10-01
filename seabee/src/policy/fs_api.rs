@@ -119,6 +119,9 @@ pub fn save_seabee_file_and_sig(
     // save file if it doesn't already exist
     // make sure that source and dest for copy are different
     if dest_path != src_path {
+        if let Some(parent) = dest_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
         if let Err(e) = fs::copy(src_path, dest_path) {
             return Err(anyhow!(
                 "add_new_policy_from_yaml: failed to copy from {} to {}. Got error: {e}",
@@ -131,6 +134,9 @@ pub fn save_seabee_file_and_sig(
     // make sure that source and dest for copy are different
     if let Some(sig_path) = sig_path {
         if *sig_path != new_sig_path {
+            if let Some(parent) = new_sig_path.parent() {
+                fs::create_dir_all(parent)?;
+            }
             if let Err(e) = fs::copy(sig_path, &new_sig_path) {
                 return Err(anyhow!(
                     "add_new_policy_from_yaml: failed to copy from {} to {}. Got error: {e}",

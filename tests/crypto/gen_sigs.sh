@@ -22,8 +22,11 @@ sudo seabeectl sign -t policies/test_policy_sha256.yaml -k crypto/keys/ecdsa-pri
 sudo seabeectl sign -t policies/test_policy_sha256.yaml -k crypto/keys/rsa-private.pem -o crypto/sigs/test-policy-rsa-sha256.sign --nopass
 
 ## test policy
-sudo seabeectl sign -t policies/test_tool_debug_policy.yaml -k crypto/keys/rsa-private.pem -o crypto/sigs/test-tool-debug-policy.sign --nopass
-sudo seabeectl sign -t policies/test_tool_release_policy.yaml -k crypto/keys/rsa-private.pem -o crypto/sigs/test-tool-release-policy.sign --nopass
+sudo seabeectl sign -t policies/test_tool_debug_audit.yaml -k crypto/keys/rsa-private.pem -o crypto/sigs/test-tool-debug-audit.sign --nopass
+sudo seabeectl sign -t policies/test_tool_release_audit.yaml -k crypto/keys/rsa-private.pem -o crypto/sigs/test-tool-release-audit.sign --nopass
+sudo seabeectl sign -t policies/test_tool_debug_block.yaml -k crypto/keys/rsa-private.pem -o crypto/sigs/test-tool-debug-block.sign --nopass
+sudo seabeectl sign -t policies/test_tool_release_block.yaml -k crypto/keys/rsa-private.pem -o crypto/sigs/test-tool-release-block.sign --nopass
+sudo seabeectl sign -t policies/remove_test_tool_policy.yaml -k crypto/keys/rsa-private.pem -o crypto/sigs/remove-test-tool-policy.sign --nopass
 
 ## policy removal
 sudo seabeectl sign -t policies/remove_test_policy.yaml -k crypto/keys/ecdsa-private.pem -o crypto/sigs/remove-test-policy-ecdsa.sign --nopass

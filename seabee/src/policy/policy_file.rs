@@ -19,6 +19,7 @@ pub const BASE_POLICY_ID: u32 = bpf::seabee::BASE_POLICY_ID;
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(default)]
+#[serde(deny_unknown_fields)]
 #[serde_as]
 pub struct PolicyConfig {
     /// Select map security level
@@ -55,12 +56,12 @@ impl Default for PolicyConfig {
 impl PolicyConfig {
     pub fn to_c_policy_config(&self) -> bpf::seabee::c_policy_config {
         bpf::seabee::c_policy_config {
+            signal_allow_mask: self.signal_allow_mask,
+            signal_access: self.signal_access as u8,
+            ptrace_access: self.ptrace_access as u8,
             file_write_access: self.file_write_access as u8,
             map_access: self.map_access as u8,
             pin_access: self.pin_access as u8,
-            ptrace_access: self.ptrace_access as u8,
-            signal_access: self.signal_access as u8,
-            signal_allow_mask: self.signal_allow_mask,
             padding_1: 0,
             padding_2: 0,
             padding_3: 0,
@@ -141,8 +142,8 @@ impl std::fmt::Display for PolicyFile {
         };
         write!(
             f,
-            "{}: {}\n  signed by key id: {}\n  version: {}\n  scope: {}\n  files: {}\n  config:\n    maps: {}\n    pins: {}\n    files: {}",
-            self.id, self.name, key_id_str, self.version, self.scope.iter().join(", "), self.files.iter().join(", "), self.config.map_access, self.config.pin_access, self.config.file_write_access,
+            "{}: {}\n  signed by key id: {}\n  version: {}\n  scope: {}\n  files: {}\n  config:\n    maps: {}\n    pins: {}\n    files: {}\n    ptrace: {}\n    signals: {}\n    signal allow mask: {}",
+            self.id, self.name, key_id_str, self.version, self.scope.iter().join(", "), self.files.iter().join(", "), self.config.map_access, self.config.pin_access, self.config.file_write_access, self.config.ptrace_access, self.config.signal_access, self.config.signal_allow_mask
         )
     }
 }

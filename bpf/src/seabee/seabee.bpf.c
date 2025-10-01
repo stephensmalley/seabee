@@ -106,6 +106,9 @@ type_to_security_level(enum EventType type, u32 policy_id)
 	struct c_policy_config *cfg = get_policy_config(policy_id);
 	// If no config exists for a policy ID, then that policy must have been revoked
 	if (!cfg) {
+		u64 data[] = { (u64)policy_id };
+		log_generic_msg(LOG_LEVEL_TRACE, LOG_REASON_DEBUG,
+		                "no policy associated with id %d", data, sizeof(data));
 		return SECURITY_ALLOW;
 	}
 
@@ -322,14 +325,13 @@ int BPF_PROG(seabee_task_kill, struct task_struct *p,
 	}
 	// allow if not blocked by signal_allow_mask
 	if (sig == ZERO || (1ULL << (sig - 1)) & cfg->signal_allow_mask) {
+		log_task_kill(LOG_LEVEL_DEBUG, LOG_REASON_ALLOW, p, sig, target_pol_id);
 		return ALLOW;
 	}
 
-	bpf_printk("signal %d, policy: %d, security: %d", sig, target_pol_id,
-	           cfg->signal_access);
 	// otherwise audit or block and log
 	if (cfg->signal_access == SECURITY_AUDIT) {
-		log_task_kill(LOG_LEVEL_DEBUG, LOG_REASON_ALLOW, p, sig, target_pol_id);
+		log_task_kill(LOG_LEVEL_INFO, LOG_REASON_AUDIT, p, sig, target_pol_id);
 		return ALLOW;
 	} else if (cfg->signal_access == SECURITY_BLOCK) {
 		log_task_kill(LOG_LEVEL_WARN, LOG_REASON_DENY, p, sig, target_pol_id);
@@ -687,8 +689,14 @@ SEC("lsm/task_alloc")
 int BPF_PROG(seabee_label_child_process, struct task_struct *child_task,
              unsigned long clone_flags)
 {
+	// don't label if parent has no label
 	u32 parent_task_pol_id = get_task_pol_id();
-	if (parent_task_pol_id != NO_POL_ID) {
+	if (parent_task_pol_id == NO_POL_ID) {
+		return ALLOW;
+	}
+	// only label if child does not already have a label
+	u32 child_task_pol_id = get_target_task_pol_id(child_task);
+	if (child_task_pol_id == NO_POL_ID) {
 		label_task(child_task, (const unsigned char *)child_task->comm,
 		           parent_task_pol_id);
 	}

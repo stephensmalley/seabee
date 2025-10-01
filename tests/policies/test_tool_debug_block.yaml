@@ -8,5 +8,6 @@ config:
   map_access: block
   file_write_access: block
   pin_access: block
-  signals: block
+  ptrace_access: block
+  signal_access: block
   signal_allow_mask: 0x8430002

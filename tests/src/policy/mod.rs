@@ -2,13 +2,16 @@
 
 use std::{
     process::{Command, Stdio},
-    sync::OnceLock,
     thread, time,
 };
 
 use anyhow::{anyhow, Result};
 use libtest_mimic::{Arguments, Failed, Trial};
-use seabee::constants::{self, SEABEECTL_EXE};
+use protect_tool::get_tests;
+use seabee::{
+    config::SecurityLevel,
+    constants::{self, SEABEECTL_EXE},
+};
 
 mod daemon_status;
 mod protect_tool;
@@ -16,8 +19,6 @@ mod shared;
 mod unverified_policy;
 mod verified_keys;
 mod verified_policy;
-
-pub static TEST_TOOL_PID: OnceLock<u32> = OnceLock::new();
 
 const VERIFIED_POLICY_CONFIG: &str = "configs/verified_policy.yaml";
 const VERIFIED_KEYS_CONFIG: &str = "configs/verified_keys.yaml";
@@ -162,32 +163,29 @@ fn run_tests_with_config(args: &Arguments, tests: Vec<Trial>, config: &str) -> R
     Ok(())
 }
 
-fn run_protect_tool_tests(args: &Arguments) -> Result<(), Failed> {
-    // start tests
-    update_config(VERIFIED_POLICY_CONFIG)?;
-    start_daemon()?;
-    let child = match protect_tool::start_test_tool() {
-        Ok(child) => child,
-        Err(e) => {
-            stop_daemon()?;
-            return Err(anyhow!("failed to start test tool: {e}").into());
-        }
-    };
-    TEST_TOOL_PID.set(child.id())?;
-    // run tests
-    let conclusion = libtest_mimic::run(args, protect_tool::tests());
-    // conclude tests
-    if let Err(e) = protect_tool::stop_test_tool(child) {
-        stop_daemon()?;
-        return Err(anyhow!("failed to stop test_tool: {e}").into());
-    }
-    stop_daemon()?;
+fn run_test_tool_with_config(args: &Arguments, level: SecurityLevel) -> Result<(), Failed> {
+    let child = protect_tool::start_test_tool(level)
+        .map_err(|e| anyhow!("failed to start test tool: {e}"))?;
+    let conclusion = libtest_mimic::run(args, get_tests(level));
+    protect_tool::stop_test_tool(child).map_err(|e| anyhow!("failed to stop test_tool: {e}"))?;
 
     if conclusion.has_failed() {
         return Err("At least one test failed".into());
     }
-
     Ok(())
+}
+
+fn run_protect_tool_tests(args: &Arguments) -> Result<(), Failed> {
+    // start tests
+    update_config(VERIFIED_POLICY_CONFIG)?;
+    start_daemon()?;
+    if let Err(e) = run_test_tool_with_config(args, SecurityLevel::block) {
+        stop_daemon()?;
+        return Err(e);
+    }
+    let ret = run_test_tool_with_config(args, SecurityLevel::audit);
+    stop_daemon()?;
+    ret
 }
 
 pub fn run_policy_tests(args: &Arguments) -> Result<(), Failed> {
@@ -199,7 +197,7 @@ pub fn run_policy_tests(args: &Arguments) -> Result<(), Failed> {
     run_tests_with_config(args, verified_keys::tests(), VERIFIED_KEYS_CONFIG)?;
     println!("Run Unverified Policy Tests");
     run_tests_with_config(args, unverified_policy::tests(), UNVERIFIED_POLICY_CONFIG)?;
-    println!("Test Protecting a Tool");
+    println!("Test Using Policy to Secure Another Tool");
     run_protect_tool_tests(args)?;
 
     policy_test_teardown()?;

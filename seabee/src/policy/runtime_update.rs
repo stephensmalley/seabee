@@ -185,7 +185,7 @@ impl super::SeaBeePolicy {
         }
 
         // label files
-        kernel_api::label_files_from_policy(policy, maps)?;
+        kernel_api::label_files_for_policy(policy, maps)?;
 
         debug!("pushed policy to kernel: {}", policy.display_short());
         Ok(())

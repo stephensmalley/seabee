@@ -78,28 +78,6 @@ struct path_storage path_storage SEC(".maps");
 
 // Helpers
 
-/// return 0 for no policy id
-static __always_inline u32 get_inode_pol_id(struct inode *inode)
-{
-	u32 *policy_id = bpf_inode_storage_get(&inode_storage, inode, 0, 0);
-	if (policy_id) {
-		return *policy_id;
-	} else {
-		return NO_POL_ID;
-	}
-}
-
-/// return 0 for no policy id
-static __always_inline u32 get_map_pol_id(struct bpf_map *map)
-{
-	struct bpf_map_data *data = bpf_map_lookup_elem(&map_to_pol_id, &map);
-	if (data) {
-		return data->policy_id;
-	} else {
-		return NO_POL_ID;
-	}
-}
-
 static __always_inline enum SecurityLevel
 type_to_security_level(enum EventType type, u32 policy_id)
 {

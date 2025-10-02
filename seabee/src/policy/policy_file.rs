@@ -118,6 +118,7 @@ impl PolicyFile {
                 String::from(constants::SERVICE_PATH),
                 String::from(constants::CONFIG_PATH),
                 String::from(constants::SEABEECTL_EXE),
+                String::from(constants::TEST_PROTECT_DIR), //TODO: remove
             ]),
             config: config.policy_config.clone(),
             ..Default::default()

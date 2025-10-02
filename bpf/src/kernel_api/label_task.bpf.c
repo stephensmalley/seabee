@@ -27,6 +27,8 @@ u32 log_level;
 // External maps
 /// @brief local storage for tasks
 struct task_storage task_storage SEC(".maps");
+/// @brief Hashmap from policy id to policy config
+struct policy_map policy_map     SEC(".maps");
 struct log_ringbuf log_ringbuf   SEC(".maps");
 
 /**

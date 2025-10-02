@@ -70,6 +70,7 @@ pub fn init_paths() -> Result<()> {
     // through a reboot. We should not error if they exist when we start up.
     trace!("create seabee directories");
     utils::create_dir_if_not_exists(SEABEE_DIR)?;
+    utils::create_dir_if_not_exists(TEST_PROTECT_DIR)?; //TODO remove
     utils::create_dir_if_not_exists(POLICY_DIR)?;
     utils::create_dir_if_not_exists(POL_SIGNATURE_DIR)?;
     utils::create_dir_if_not_exists(KEY_DIR)?;

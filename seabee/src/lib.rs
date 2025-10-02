@@ -27,7 +27,7 @@ pub struct SeaBeeMapHandles {
     pub inode_storage: MapHandle,
     pub log_ringbuf: MapHandle,
     pub map_to_pol_id: MapHandle,
-    pub policy: MapHandle,
+    pub policy_map: MapHandle,
     pub task_storage: MapHandle,
     pub path_to_pol_id: MapHandle,
 }

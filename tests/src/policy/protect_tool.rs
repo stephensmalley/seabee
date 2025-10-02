@@ -232,6 +232,8 @@ fn allow_ptrace_seize() -> Result<(), Failed> {
     )
 }
 
+// TODO: missing test case, prevent one policy from overwriting files/processes of another
+
 fn block_tests() -> Vec<Trial> {
     vec![
         create_test!(deny_map_access),

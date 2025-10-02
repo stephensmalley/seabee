@@ -25,6 +25,28 @@ extern struct task_storage  task_storage;
 extern struct policy_map    policy_map;
 extern struct map_to_pol_id map_to_pol_id;
 
+/// return NULL for no policy id
+static __always_inline u32 get_inode_pol_id(struct inode *inode)
+{
+	u32 *policy_id = bpf_inode_storage_get(&inode_storage, inode, 0, 0);
+	if (policy_id) {
+		return *policy_id;
+	} else {
+		return NO_POL_ID;
+	}
+}
+
+/// return 0 for no policy id
+static __always_inline u32 get_map_pol_id(struct bpf_map *map)
+{
+	struct bpf_map_data *data = bpf_map_lookup_elem(&map_to_pol_id, &map);
+	if (data) {
+		return data->policy_id;
+	} else {
+		return NO_POL_ID;
+	}
+}
+
 /**
  * @brief gets the pid for the current context
  */
@@ -53,6 +75,9 @@ struct task_struct *get_task()
  */
 static __always_inline struct c_policy_config *get_policy_config(u32 policy_id)
 {
+	if (policy_id == NO_POL_ID) {
+		return NULL;
+	}
 	return bpf_map_lookup_elem(&policy_map, &policy_id);
 }
 
@@ -136,6 +161,45 @@ static __always_inline void set_task_pinning(u32 flag)
 	}
 }
 
+enum object_type {
+	OBJECT_TYPE_INODE,
+	OBJECT_TYPE_TASK,
+	OBJECT_TYPE_MAP,
+};
+
+/**
+ * @brief gets the policy id for an object only if it has a valid policy associated with it.
+ *
+ * @param object a pointer to the object we want a label for
+ * @param object_type identifies what type of pointer the object is
+ *
+ * @return policy_id for an object or NO_POL_ID
+*/
+static __always_inline u32 get_object_valid_policy_id(void            *object,
+                                                      enum object_type type)
+{
+	// get current label
+	u32 current_pol_id = NO_POL_ID;
+	switch (type) {
+	case OBJECT_TYPE_TASK:
+		current_pol_id = get_target_task_pol_id((struct task_struct *)object);
+		break;
+	case OBJECT_TYPE_INODE:
+		current_pol_id = get_inode_pol_id((struct inode *)object);
+		break;
+	case OBJECT_TYPE_MAP:
+		current_pol_id = get_map_pol_id((struct bpf_map *)object);
+		break;
+	}
+	// check if label has a policy
+	struct c_policy_config *cfg = get_policy_config(current_pol_id);
+	if (cfg) {
+		return current_pol_id;
+	}
+	//TODO: should we find a way to reset of the policy ID to zero if there is no policy?
+	return NO_POL_ID;
+}
+
 /**
  * @brief label a task with a policy id
  *
@@ -146,6 +210,19 @@ static __always_inline void label_task(struct task_struct  *task,
                                        const unsigned char *task_name,
                                        u32                  policy_id)
 {
+	// Ensure task is not already associated with a policy
+	u32 current_pol_id = get_object_valid_policy_id(task, OBJECT_TYPE_TASK);
+	if (current_pol_id) {
+		u64 log[4] = { (u64)task_name, (u64)task->tgid, (u64)policy_id,
+			           (u64)current_pol_id };
+		log_generic_msg(
+			LOG_LEVEL_ERROR, LOG_REASON_ERROR,
+			"failed to label task %s(%d) as %d. Task already belongs to policy %d",
+			log, sizeof(log));
+		return;
+	}
+
+	// Assign a new policy id
 	struct seabee_task_data  new_data      = { policy_id, 0 };
 	struct seabee_task_data *new_data_blob = bpf_task_storage_get(
 		&task_storage, task, &new_data, BPF_LOCAL_STORAGE_GET_F_CREATE);
@@ -170,16 +247,27 @@ static __always_inline void label_inode(struct dentry *dentry,
                                         struct inode *inode, u32 *policy_id)
 {
 	const unsigned char *name = dentry->d_name.name;
-	u32 *label = bpf_inode_storage_get(&inode_storage, inode, policy_id,
-	                                   BPF_LOCAL_STORAGE_GET_F_CREATE);
+	// Ensure inode is not already associated with a policy
+	u32 current_pol_id = get_object_valid_policy_id(inode, OBJECT_TYPE_INODE);
+	if (current_pol_id) {
+		u64 log[3] = { (u64)name, (u64)*policy_id, (u64)current_pol_id };
+		log_generic_msg(
+			LOG_LEVEL_ERROR, LOG_REASON_ERROR,
+			"failed to label inode for %s as %d. Inode already belongs to policy %d",
+			log, sizeof(log));
+		return;
+	}
+
+	// Assign new inode policy id
+	u32 *label  = bpf_inode_storage_get(&inode_storage, inode, policy_id,
+	                                    BPF_LOCAL_STORAGE_GET_F_CREATE);
+	u64  log[2] = { (u64)name, (u64)*policy_id };
 	if (label) {
-		u64 data[2] = { (u64)name, *label };
 		log_generic_msg(LOG_LEVEL_TRACE, LOG_REASON_DEBUG,
-		                "label file '%s' as %d", data, sizeof(data));
+		                "label inode for '%s' as %d", log, sizeof(log));
 	} else {
-		u64 data[1] = { (u64)name };
 		log_generic_msg(LOG_LEVEL_ERROR, LOG_REASON_ERROR,
-		                "failed to label file: %s", data, sizeof(data));
+		                "failed to label inode for %s as %d", log, sizeof(log));
 	}
 }
 
@@ -202,9 +290,11 @@ static __always_inline int label_map_with_id(struct bpf_map *map, u32 policy_id)
 	map_data.policy_id = policy_id;
 	BPF_CORE_READ_STR_INTO(&map_data.name, map, name);
 
-	long err = bpf_map_update_elem(&map_to_pol_id, &map, &map_data, BPF_ANY);
-	u64  data[3] = { (u64)map_data.name, (u64)BPF_CORE_READ(map, id),
-		             (u64)policy_id };
+	// NOEXIST ensures that we cannot overwrite an existing map label
+	long err =
+		bpf_map_update_elem(&map_to_pol_id, &map, &map_data, BPF_NOEXIST);
+	u64 data[3] = { (u64)map_data.name, (u64)BPF_CORE_READ(map, id),
+		            (u64)policy_id };
 	if (err < 0) {
 		log_generic_msg(LOG_LEVEL_ERROR, LOG_REASON_ERROR,
 		                "Error: update elem failed map %s(%d) for policy %d",

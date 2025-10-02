@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-use std::{fs, io::ErrorKind, mem::MaybeUninit, os::fd::AsFd, path::Path, process};
+use std::{fs, mem::MaybeUninit, os::fd::AsFd, path::Path, process};
 
 use anyhow::{anyhow, Context, Result};
 use libbpf_rs::{
@@ -28,9 +28,9 @@ pub fn update_kernel_policy_map(
     config: &policy_file::PolicyConfig,
 ) -> Result<()> {
     let config = config.to_c_policy_config();
-    if let Err(e) = maps
-        .policy
-        .update(id.as_bytes(), config.as_bytes(), libbpf_rs::MapFlags::ANY)
+    if let Err(e) =
+        maps.policy_map
+            .update(id.as_bytes(), config.as_bytes(), libbpf_rs::MapFlags::ANY)
     {
         return Err(anyhow!(
             "Error: update_kernel_policy_map: possibly exceeded max policies: {}\n error: '{}'",
@@ -49,7 +49,7 @@ pub fn update_kernel_policy_map(
 /// will be treated as if they have no policy id.
 pub fn remove_kernel_policy(maps: &SeaBeeMapHandles, policy_id: u32) -> Result<()> {
     debug!("remove kernel policy: {}", policy_id);
-    maps.policy.delete(policy_id.as_bytes())?;
+    maps.policy_map.delete(policy_id.as_bytes())?;
 
     // inode and task local storage labels will persist,
     //   but will not be associated with a policy, so they won't be affected
@@ -75,15 +75,15 @@ pub fn add_path_to_scope(maps: &SeaBeeMapHandles, path: &String, id: u32) -> Res
 }
 
 /// Label all files for a policy with a given id
-pub fn label_files_from_policy(policy: &PolicyFile, sb_maps: &SeaBeeMapHandles) -> Result<()> {
-    debug!("Labeling files for policy id: {}", policy.id);
+pub fn label_files_for_policy(policy: &PolicyFile, sb_maps: &SeaBeeMapHandles) -> Result<()> {
+    debug!("label_files_for_policy id: {}", policy.id);
     let mut open_object = MaybeUninit::uninit();
     let skel = load_label_file_skel(&mut open_object, sb_maps)?;
 
     // label files
     for file in &policy.files {
-        if let Err(e) = label_file(&skel.maps.filename_to_policy_id, file, policy.id) {
-            return Err(anyhow!("failed to label file {file}. Error: {e}"));
+        if let Err(e) = trigger_file_labeling(&skel.maps.filename_to_policy_id, file, policy.id) {
+            return Err(anyhow!("failed to label file {file}: {e}"));
         }
     }
 
@@ -95,7 +95,7 @@ pub fn label_file_with_id(sb_maps: &SeaBeeMapHandles, file: &String, id: u32) ->
     debug!("Labeling file {file} with id: {id}");
     let mut open_object = MaybeUninit::uninit();
     let skel = load_label_file_skel(&mut open_object, sb_maps)?;
-    if let Err(e) = label_file(&skel.maps.filename_to_policy_id, file, id) {
+    if let Err(e) = trigger_file_labeling(&skel.maps.filename_to_policy_id, file, id) {
         return Err(anyhow!("failed to label file {}. Error: {}", file, e));
     }
 
@@ -107,7 +107,7 @@ pub fn unlabel_file(sb_maps: &SeaBeeMapHandles, file: &String) -> Result<()> {
     debug!("unlabel file {}", file);
     let mut open_object = MaybeUninit::uninit();
     let skel = load_label_file_skel(&mut open_object, sb_maps)?;
-    label_file(
+    trigger_file_labeling(
         &skel.maps.filename_to_policy_id,
         file,
         bpf::seabee::NO_POL_ID,
@@ -127,7 +127,7 @@ pub fn label_pins(
 
     for pin in pins {
         match pin.link.pin_path() {
-            Some(path) => label_file(
+            Some(path) => trigger_file_labeling(
                 &skel.maps.filename_to_policy_id,
                 &path.to_string_lossy(),
                 policy_id,
@@ -170,15 +170,18 @@ pub fn label_maps_for_skel(
     Ok(())
 }
 
-fn label_file(map: &Map, filepath: &str, policy_id: u32) -> Result<()> {
+// should only be called after load_label_file_skel(), this triggers
+// loaded eBPF programs which actually execute the file labeling
+fn trigger_file_labeling(map: &Map, filepath: &str, policy_id: u32) -> Result<()> {
     // Update map with filename
-    let file_name = Path::new(filepath)
-        .file_name()
-        .context(format!("label_file: file_name() failed on {filepath}"))?;
+    let path = Path::new(filepath);
+    let file_name = path.file_name().context(format!(
+        "trigger_file_labeling: file_name() failed on {filepath}"
+    ))?;
     let key = crate::utils::str_to_bytes(
-        file_name
-            .to_str()
-            .context(format!("label_file: to_str() failed on {filepath}"))?,
+        file_name.to_str().context(format!(
+            "trigger_file_labeling: to_str() failed on {filepath}"
+        ))?,
         128,
     )?;
     map.update(
@@ -187,13 +190,21 @@ fn label_file(map: &Map, filepath: &str, policy_id: u32) -> Result<()> {
         libbpf_rs::MapFlags::ANY,
     )?;
 
-    // trigger 'seabee_label_file' eBPF program in 'label_file.bpf.c' by trying to delete a file
-    match fs::remove_file(filepath) {
-        Ok(_) => Err(anyhow!("{filepath} was not allowed to be deleted")),
-        Err(e) => match e.kind() {
-            ErrorKind::PermissionDenied => Ok(()),
-            _ => Err(anyhow!("unexpected error: {e}")),
-        },
+    // trigger 'seabee_label_file' eBPF program in 'label_file.bpf.c' using stat.
+    // After successfully labeling the file, a permission denied is returned.
+    // We don't actually care about the result of stat.
+    // The denial simply indicates we successfully triggered our program.
+    match nix::sys::stat::stat(path) {
+        Ok(_) => Err(anyhow!(
+            "trigger_file_labeling: stat returned unexpected allow for {filepath}"
+        )),
+        Err(e) => {
+            if e == nix::errno::Errno::EPERM {
+                Ok(())
+            } else {
+                Err(anyhow!("trigger_file_labeling: failed stat: {e}"))
+            }
+        }
     }?;
 
     // Reset map
@@ -244,6 +255,10 @@ fn load_label_file_skel<'a>(
         .maps
         .log_ringbuf
         .reuse_fd(sb_maps.log_ringbuf.as_fd())?;
+    open_skel
+        .maps
+        .policy_map
+        .reuse_fd(sb_maps.policy_map.as_fd())?;
     open_skel.maps.bss_data.user_pid = process::id();
     open_skel.maps.bss_data.log_level = *bpf::logging::LOG_LEVEL.get().unwrap() as u32;
     let mut skel = open_skel.load()?;
@@ -268,6 +283,10 @@ fn load_label_task_skel<'a>(
         .maps
         .log_ringbuf
         .reuse_fd(sb.maps.log_ringbuf.as_fd())?;
+    open_skel
+        .maps
+        .policy_map
+        .reuse_fd(sb.maps.policy_map.as_fd())?;
     open_skel.maps.bss_data.user_pid = process::id();
     open_skel.maps.bss_data.policy_id = policy_id;
     open_skel.maps.bss_data.log_level = *bpf::logging::LOG_LEVEL.get().unwrap() as u32;

@@ -1,16 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
-use std::path::PathBuf;
+use std::{fs, path::PathBuf};
 
 /// Module to check the security of file protections
 ///
 /// IMPORTANT: if these tests fail, you may need to delete
 /// the `target` folder and recompile since they may corrupt
-/// the binary and configs used to do testing.
+/// the binary and configs used to do testing584252
+/// .
 use libtest_mimic::{Failed, Trial};
-use seabee::constants;
+use seabee::constants::{self, TEST_PROTECT_DIR};
 
 use crate::{command::TestCommandBuilder, create_test};
 
+//TODO: refactor to include directories
 const PROTECTED_FILES: [&str; 3] = [
     constants::CONFIG_PATH,
     constants::SEABEECTL_EXE,
@@ -67,9 +69,20 @@ fn security_file_deny_write() -> Result<(), Failed> {
     Ok(())
 }
 
+fn security_protect_directory() -> Result<(), Failed> {
+    match fs::remove_dir(TEST_PROTECT_DIR) {
+        Ok(_) => Err(format!("{TEST_PROTECT_DIR} was deleted").into()),
+        Err(e) => match e.kind() {
+            std::io::ErrorKind::PermissionDenied => Ok(()),
+            _ => Err(format!("Unexpected error during remove_dir: {e}").into()),
+        },
+    }
+}
+
 pub fn tests() -> Vec<Trial> {
     vec![
         create_test!(security_file_deny_unlink),
         create_test!(security_file_deny_write),
+        create_test!(security_protect_directory),
     ]
 }

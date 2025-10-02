@@ -23,6 +23,8 @@ u32 log_level;
 // External maps
 /// @brief local storage for inodes
 struct inode_storage inode_storage SEC(".maps");
+/// @brief Hashmap from policy id to policy config
+struct policy_map policy_map       SEC(".maps");
 struct log_ringbuf log_ringbuf     SEC(".maps");
 
 struct filename_to_policy_id {
@@ -39,18 +41,17 @@ struct filename_to_policy_id filename_to_policy_id SEC(".maps");
 
 /**
  * @brief This hook is used to label files because it is an LSM hook that
- * provides a 'dentry' as an argument. This is important because a
- * 'struct file' is too broad and does not trigger on eBPF pins, but
- * a 'struct inode' is too granular because we do not know the name of
- * the inode on the filesystem which we want for logging.
+ * is easy to trigger and provides our eBPF program access to an existing
+ * dentry. This is important because a 'struct file' does not
+ * trigger on eBPF pins, buta  'struct inode' is not connected to a name
+ * which we use for initial labeling and for logging.
  *
- * @param dir the parent directory
- * @param dentry the file being unlinked
+ * @param path the path being labeled
  *
  * @return {@link ALLOW} or {@link DENY}
  */
-SEC("lsm/inode_unlink")
-int BPF_PROG(seabee_label_target_file, struct inode *dir, struct dentry *dentry)
+SEC("lsm/inode_getattr")
+int BPF_PROG(seabee_label_target_path, const struct path *path)
 {
 	// only trigger for actions taken by associated user space
 	u32 target_pid = bpf_get_current_pid_tgid() >> 32;
@@ -58,7 +59,7 @@ int BPF_PROG(seabee_label_target_file, struct inode *dir, struct dentry *dentry)
 		return ALLOW;
 	}
 	// get name of file
-	const unsigned char *name = BPF_CORE_READ(dentry, d_name.name);
+	const unsigned char *name = BPF_CORE_READ(path, dentry, d_name.name);
 	char                 name_copy[MAX_STR_LEN] = { 0 };
 	int                  err                    = 0;
 	err = bpf_probe_read_kernel_str(&name_copy, sizeof(name_copy), name);
@@ -73,10 +74,19 @@ int BPF_PROG(seabee_label_target_file, struct inode *dir, struct dentry *dentry)
 	// get policy_id and label inode
 	u32 *policy_id = bpf_map_lookup_elem(&filename_to_policy_id, &name_copy);
 	if (policy_id) {
-		label_inode(dentry, dentry->d_inode, policy_id);
-		// we don't actually want to delete this inode
+		label_inode(path->dentry, path->dentry->d_inode, policy_id);
+		// DENY signals to userspace that labeling worked
 		return DENY;
 	}
 
 	return ALLOW;
 }
+
+//use this to label files automatically
+// SEC("lsm/d_instantiate")
+// int BPF_PROG(seabee_label_target_dir, struct dentry *dentry, struct inode *inode,
+//              int ret)
+// {
+// 	bpf_printk("d_instatiate: %s", dentry->d_name.name);
+// 	return ALLOW;
+// }

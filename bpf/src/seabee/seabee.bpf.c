@@ -93,7 +93,7 @@ type_to_security_level(enum EventType type, u32 policy_id)
 	switch (type) {
 	case EVENT_TYPE_FILE_OPEN:
 		return cfg->file_write_access;
-	case EVENT_TYPE_INODE_UNLINK:
+	case EVENT_TYPE_INODE_ACCESS:
 		return cfg->pin_access;
 	case EVENT_TYPE_BPF_MAP:
 		return cfg->map_access;
@@ -340,23 +340,35 @@ int BPF_PROG(seabee_file_open, struct file *file)
 	if ((BPF_CORE_READ(file, f_mode) & FMODE_WRITE) == 0) {
 		return ALLOW;
 	}
-	return decide_inode_access(EVENT_TYPE_FILE_OPEN, file->f_path.dentry);
+	return decide_inode_access(EVENT_TYPE_INODE_ACCESS, file->f_path.dentry);
+}
+
+/**
+ * @brief Prevents unlinking/removing pins or protected files
+ *
+ * @param dir the parent directory
+ * @param dentry the file being unlinked
+ *
+ * @return {@link ALLOW} or {@link DENY}
+ */
+SEC("lsm/inode_unlink")
+int BPF_PROG(seabee_inode_unlink, struct inode *dir, struct dentry *dentry)
+{
+	return decide_inode_access(EVENT_TYPE_INODE_ACCESS, dentry);
 }
 
 /**
  * @brief Prevents unlinking/removing the protected pins.
  *
  * @param dir the parent directory
- * @param dentry the file being unlinked
- * @param ret the return code of the previous LSM hook
+ * @param dentry the directory to be removed
  *
  * @return {@link ALLOW} or {@link DENY}
  */
-SEC("lsm/inode_unlink")
-int BPF_PROG(seabee_inode_unlink, struct inode *dir, struct dentry *dentry,
-             int ret)
+SEC("lsm/inode_rmdir")
+int BPF_PROG(seabee_inode_rmdir, struct inode *dir, struct dentry *dentry)
 {
-	return decide_inode_access(EVENT_TYPE_INODE_UNLINK, dentry);
+	return decide_inode_access(EVENT_TYPE_INODE_ACCESS, dentry);
 }
 
 /**

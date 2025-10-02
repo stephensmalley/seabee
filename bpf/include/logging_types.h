@@ -52,7 +52,7 @@ enum LogReason {
 enum EventType {
 	EVENT_TYPE_UNKNOWN = 0,
 	EVENT_TYPE_MSG,
-	EVENT_TYPE_INODE_UNLINK,
+	EVENT_TYPE_INODE_ACCESS,
 	EVENT_TYPE_SB_UMOUNT,
 	EVENT_TYPE_BPF_MAP,
 	EVENT_TYPE_TASK_KILL,
@@ -62,6 +62,8 @@ enum EventType {
 	EVENT_TYPE_PTRACE_ACCESS_CHECK,
 	EVENT_TYPE_BPF_WRITE_USER,
 	EVENT_TYPE_TASK_ALLOC,
+	// we cannot remove this log type because the file access
+	// permissions are different from the inode permissions
 	EVENT_TYPE_FILE_OPEN,
 	EVENT_TYPE_UNIX_STREAM_CONNECT,
 };

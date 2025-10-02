@@ -279,7 +279,7 @@ impl LogTypeCLI {
         match self {
             LogTypeCLI::File => vec![
                 EventType::EVENT_TYPE_FILE_OPEN,
-                EventType::EVENT_TYPE_INODE_UNLINK,
+                EventType::EVENT_TYPE_INODE_ACCESS,
             ],
             LogTypeCLI::Unmount => vec![EventType::EVENT_TYPE_SB_UMOUNT],
             LogTypeCLI::Map => vec![EventType::EVENT_TYPE_BPF_MAP],

@@ -19,6 +19,7 @@ dir = "/sys/fs/bpf/seabee"
 seabee_bpf_map = 0
 seabee_task_kill = 0
 seabee_inode_unlink = 0
+seabee_inode_rmdir = 0
 seabee_sb_umount = 0
 seabee_kernel_module_request = 0
 seabee_kernel_read_file = 0

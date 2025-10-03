@@ -28,4 +28,5 @@ strum_macros.workspace = true
 tracing.workspace = true
 tracing-journald = "0.3"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["std", "fmt", "ansi", "registry"] }
+walkdir = "2.5.0"
 zerocopy.workspace = true

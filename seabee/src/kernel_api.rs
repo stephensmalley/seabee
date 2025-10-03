@@ -1,5 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-use std::{fs, mem::MaybeUninit, os::fd::AsFd, path::Path, process};
+use std::{
+    fs,
+    mem::MaybeUninit,
+    os::fd::AsFd,
+    path::{Path, PathBuf},
+    process,
+};
 
 use anyhow::{anyhow, Context, Result};
 use libbpf_rs::{
@@ -7,7 +13,6 @@ use libbpf_rs::{
     skel::{OpenSkel, Skel, SkelBuilder},
     Map, MapCore, OpenObject,
 };
-
 use tracing::{debug, trace};
 use zerocopy::IntoBytes;
 
@@ -58,8 +63,12 @@ pub fn remove_kernel_policy(maps: &SeaBeeMapHandles, policy_id: u32) -> Result<(
 }
 
 // Add a path to the scope corresponding to an id
-pub fn add_path_to_scope(maps: &SeaBeeMapHandles, path: &String, id: u32) -> Result<()> {
-    let key = utils::str_to_bytes(path, PATH_MAX.try_into()?)?;
+pub fn add_path_to_scope(maps: &SeaBeeMapHandles, path: &Path, id: u32) -> Result<()> {
+    let key = utils::str_to_bytes(
+        path.to_str()
+            .context(format!("failed to covert {} to string", path.display()))?,
+        PATH_MAX.try_into()?,
+    )?;
 
     if let Err(e) =
         maps.path_to_pol_id
@@ -70,7 +79,7 @@ pub fn add_path_to_scope(maps: &SeaBeeMapHandles, path: &String, id: u32) -> Res
             constants::SEABEE_MAX_POLICY_SCOPES,
         ));
     }
-    debug!("added path {} to scope for policy {}", path, id);
+    debug!("added path {} to scope for policy {}", path.display(), id);
     Ok(())
 }
 
@@ -81,35 +90,75 @@ pub fn label_files_for_policy(policy: &PolicyFile, sb_maps: &SeaBeeMapHandles) -
     let skel = load_label_file_skel(&mut open_object, sb_maps)?;
 
     // label files
-    for file in &policy.files {
-        if let Err(e) = trigger_file_labeling(&skel.maps.filename_to_policy_id, file, policy.id) {
-            return Err(anyhow!("failed to label file {file}: {e}"));
-        }
+    for path in &policy.files {
+        utils::walk_with(path, |entry| {
+            if entry.path().is_file() || entry.path().is_dir() {
+                trigger_inode_labeling(&skel.maps.filename_to_policy_id, path, policy.id).map_err(
+                    |e| {
+                        anyhow!(
+                            "label_files_for_policy {}: failed to label {}\n{e}",
+                            policy.id,
+                            path.display()
+                        )
+                    },
+                )?;
+            } else {
+                println!("{} is not a file and was skipped", entry.path().display());
+            }
+            Ok(())
+        })?;
+
+        // } else if path.is_dir() {
+        //     for entry in WalkDir::new(path).into_iter().filter_map(Result::ok) {
+        //         let entry_path = entry.path();
+        //         if entry_path.is_file() {
+        //             trigger_inode_labeling(&skel.maps.filename_to_policy_id, entry_path, policy.id)
+        //                 .map_err(|e| {
+        //                     anyhow!(
+        //                         "label_files_for_policy {}: failed to label {}\n{e}",
+        //                         policy.id,
+        //                         entry_path.display()
+        //                     )
+        //                 })?;
+        //         }
+        //     }
+        //     // label_directory_recurse(&path, &skel.maps.filename_to_policy_id, policy.id)?;
+        // } else {
+        //     //TODO: should this be error? what if we skip and warn instead?
+        //     return Err(anyhow!(
+        //         "label_files_for_policy {}: failed to label {}: neither a file or a directory",
+        //         policy.id,
+        //         path.display()
+        //     ));
+        // }
     }
 
     Ok(())
 }
 
 /// Label a given file with a given id
-pub fn label_file_with_id(sb_maps: &SeaBeeMapHandles, file: &String, id: u32) -> Result<()> {
-    debug!("Labeling file {file} with id: {id}");
+pub fn label_file_with_id(sb_maps: &SeaBeeMapHandles, path: &Path, id: u32) -> Result<()> {
+    debug!("Labeling file {} with id: {id}", path.display());
     let mut open_object = MaybeUninit::uninit();
     let skel = load_label_file_skel(&mut open_object, sb_maps)?;
-    if let Err(e) = trigger_file_labeling(&skel.maps.filename_to_policy_id, file, id) {
-        return Err(anyhow!("failed to label file {}. Error: {}", file, e));
+    if let Err(e) = trigger_inode_labeling(&skel.maps.filename_to_policy_id, path, id) {
+        return Err(anyhow!(
+            "label_file_with_id failed on {}: {e}",
+            path.display()
+        ));
     }
 
     Ok(())
 }
 
 /// Unlabel a given file
-pub fn unlabel_file(sb_maps: &SeaBeeMapHandles, file: &String) -> Result<()> {
-    debug!("unlabel file {}", file);
+pub fn unlabel_file(sb_maps: &SeaBeeMapHandles, file: &PathBuf) -> Result<()> {
+    debug!("unlabel file {}", file.display());
     let mut open_object = MaybeUninit::uninit();
     let skel = load_label_file_skel(&mut open_object, sb_maps)?;
-    trigger_file_labeling(
+    trigger_inode_labeling(
         &skel.maps.filename_to_policy_id,
-        file,
+        Path::new(file),
         bpf::seabee::NO_POL_ID,
     )?;
 
@@ -127,11 +176,9 @@ pub fn label_pins(
 
     for pin in pins {
         match pin.link.pin_path() {
-            Some(path) => trigger_file_labeling(
-                &skel.maps.filename_to_policy_id,
-                &path.to_string_lossy(),
-                policy_id,
-            )?,
+            Some(path) => {
+                trigger_inode_labeling(&skel.maps.filename_to_policy_id, &path, policy_id)?
+            }
             None => {
                 return Err(anyhow!("link was not pinned!"));
             }
@@ -172,15 +219,16 @@ pub fn label_maps_for_skel(
 
 // should only be called after load_label_file_skel(), this triggers
 // loaded eBPF programs which actually execute the file labeling
-fn trigger_file_labeling(map: &Map, filepath: &str, policy_id: u32) -> Result<()> {
+fn trigger_inode_labeling(map: &Map, path: &Path, policy_id: u32) -> Result<()> {
     // Update map with filename
-    let path = Path::new(filepath);
     let file_name = path.file_name().context(format!(
-        "trigger_file_labeling: file_name() failed on {filepath}"
+        "trigger_file_labeling: file_name() failed on {}",
+        path.display()
     ))?;
     let key = crate::utils::str_to_bytes(
         file_name.to_str().context(format!(
-            "trigger_file_labeling: to_str() failed on {filepath}"
+            "trigger_file_labeling: to_str() failed on {}",
+            path.display()
         ))?,
         128,
     )?;
@@ -196,7 +244,8 @@ fn trigger_file_labeling(map: &Map, filepath: &str, policy_id: u32) -> Result<()
     // The denial simply indicates we successfully triggered our program.
     match nix::sys::stat::stat(path) {
         Ok(_) => Err(anyhow!(
-            "trigger_file_labeling: stat returned unexpected allow for {filepath}"
+            "trigger_file_labeling: stat returned unexpected allow for {}",
+            path.display()
         )),
         Err(e) => {
             if e == nix::errno::Errno::EPERM {

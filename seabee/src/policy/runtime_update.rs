@@ -218,7 +218,7 @@ impl super::SeaBeePolicy {
             return Err(anyhow!("Policy update requires incrementing version number. Here is the current policy:\n{}", old_policy));
         }
         if old_policy.scope != new_policy.scope {
-            return Err(anyhow!("Not possible to change policy scope via an update. Instead, remove and replace policy.\nNew policy scope did not match old policy scope of: {}", old_policy.scope.iter().join(", ")));
+            return Err(anyhow!("Not possible to change policy scope via an update. Instead, remove and replace policy.\nNew policy scope did not match old policy scope of: {}", old_policy.scope.iter().map(|p| p.display()).join(", ")));
         }
 
         // assign policy id, key id

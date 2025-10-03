@@ -171,3 +171,180 @@ pub fn remove_if_exists(path: &Path) -> Result<()> {
 
     Ok(())
 }
+
+/// Traverse all files and directories under `root`, calling `f` on each entry.
+pub fn walk_with<F>(root: &Path, mut f: F) -> Result<()>
+where
+    F: FnMut(&walkdir::DirEntry) -> Result<()>,
+{
+    for entry in walkdir::WalkDir::new(root) {
+        let entry = entry?;
+        f(&entry)?;
+    }
+    Ok(())
+}
+
+// The following test cases are ai generated
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs::{self, File};
+    use std::os::unix::fs as unix_fs; // for symlink on Unix
+    use std::os::unix::fs::PermissionsExt;
+    use tempfile::tempdir;
+
+    // 1. Test that walk_with visits all entries including root, dirs, files, and others.
+    #[test]
+    fn test_walk_visits_all_entries() -> Result<()> {
+        let dir = tempdir()?;
+        let root = dir.path();
+
+        // Create a subdirectory
+        let subdir = root.join("sub");
+        fs::create_dir(&subdir)?;
+
+        // Create files
+        let file1 = root.join("file1.txt");
+        let file2 = subdir.join("file2.txt");
+        File::create(&file1)?;
+        File::create(&file2)?;
+
+        // Create a symlink (non-file/dir entry, but still should be visited)
+        let symlink_path = root.join("symlink");
+        unix_fs::symlink(&file1, &symlink_path)?;
+
+        let mut visited = Vec::new();
+        walk_with(root, |entry| {
+            visited.push(entry.path().strip_prefix(root).unwrap().to_path_buf());
+            Ok(())
+        })?;
+
+        // Expected: root itself, subdir, file1, file2, symlink
+        assert!(visited.contains(&Path::new("").to_path_buf())); // root
+        assert!(visited.contains(&Path::new("sub").to_path_buf()));
+        assert!(visited.contains(&Path::new("file1.txt").to_path_buf()));
+        assert!(visited.contains(&Path::new("sub/file2.txt").to_path_buf()));
+        assert!(visited.contains(&Path::new("symlink").to_path_buf()));
+
+        Ok(())
+    }
+
+    // 2. Test that walk_with does not follow symlinks.
+    #[test]
+    fn test_walk_does_not_follow_symlinks() -> Result<()> {
+        let dir = tempdir()?;
+        let root = dir.path();
+
+        // Create nested directory
+        let subdir = root.join("sub");
+        fs::create_dir(&subdir)?;
+
+        // Symlink pointing back to root (would cause infinite recursion if followed)
+        let symlink_path = subdir.join("loop");
+        unix_fs::symlink(root, &symlink_path)?;
+
+        let mut visited = Vec::new();
+        walk_with(root, |entry| {
+            visited.push(entry.path().to_path_buf());
+            Ok(())
+        })?;
+
+        // Ensure symlink itself is seen, but traversal doesn’t loop infinitely
+        assert!(visited.contains(&symlink_path));
+        // Should only visit root, sub, and loop
+        assert!(visited.len() == 3);
+
+        Ok(())
+    }
+
+    // 3. Test that walk_with works on deeply nested directories (5+ levels).
+    #[test]
+    fn test_walk_deeply_nested_directories() -> Result<()> {
+        let dir = tempdir()?;
+        let root = dir.path();
+
+        // Create nested structure: root/a/b/c/d/e/file.txt
+        let mut current = root.to_path_buf();
+        for name in ["a", "b", "c", "d", "e"] {
+            current.push(name);
+            fs::create_dir(&current)?;
+        }
+        let file_path = current.join("file.txt");
+        File::create(&file_path)?;
+
+        let mut visited = Vec::new();
+        walk_with(root, |entry| {
+            visited.push(entry.path().strip_prefix(root).unwrap().to_path_buf());
+            Ok(())
+        })?;
+
+        // Check that all layers are present
+        for prefix in [
+            Path::new(""),
+            Path::new("a"),
+            Path::new("a/b"),
+            Path::new("a/b/c"),
+            Path::new("a/b/c/d"),
+            Path::new("a/b/c/d/e"),
+            Path::new("a/b/c/d/e/file.txt"),
+        ] {
+            assert!(
+                visited.contains(&prefix.to_path_buf()),
+                "Missing {prefix:?}",
+            );
+        }
+
+        Ok(())
+    }
+
+    // Negative test: broken symlink
+    #[test]
+    fn test_walk_with_broken_symlink() -> Result<()> {
+        let dir = tempdir()?;
+        let root = dir.path();
+
+        // Create a symlink to a non-existent target
+        let broken_symlink = root.join("broken");
+        unix_fs::symlink("/does/not/exist", &broken_symlink)?;
+
+        let mut visited = Vec::new();
+        let result = walk_with(root, |entry| {
+            visited.push(entry.path().to_path_buf());
+            Ok(())
+        });
+
+        // The traversal itself should still succeed: walkdir skips broken symlinks.
+        assert!(result.is_ok());
+        assert!(visited.contains(&broken_symlink));
+
+        Ok(())
+    }
+
+    // Negative test: unreadable directory
+    #[test]
+    fn test_walk_with_unreadable_directory() -> Result<()> {
+        let dir = tempdir()?;
+        let root = dir.path();
+
+        // Create an unreadable subdirectory
+        let secret = root.join("secret");
+        fs::create_dir(&secret)?;
+        fs::set_permissions(&secret, fs::Permissions::from_mode(0o000))?;
+
+        // Try walking
+        let result = walk_with(root, |_entry| Ok(()));
+
+        // Should fail with a permission denied error
+        assert!(result.is_err());
+        let err_str = format!("{:?}", result.unwrap_err());
+        assert!(
+            err_str.contains("Permission denied"),
+            "Expected permission denied, got {err_str}",
+        );
+
+        // Restore perms so tempdir can clean up
+        fs::set_permissions(&secret, fs::Permissions::from_mode(0o755))?;
+
+        Ok(())
+    }
+}

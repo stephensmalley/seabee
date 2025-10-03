@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -81,8 +81,8 @@ pub struct PolicyFile {
     /// Uniquely identifies a policy file
     pub name: String,
     pub version: u32,
-    pub scope: HashSet<String>,
-    pub files: HashSet<String>,
+    pub scope: HashSet<PathBuf>,
+    pub files: HashSet<PathBuf>,
     pub config: PolicyConfig,
     #[serde(default)]
     pub digest: crypto::SeaBeeDigest,
@@ -107,18 +107,15 @@ impl PolicyFile {
 
     pub fn base(config: &Config) -> Result<Self> {
         let current_exe = std::env::current_exe()?;
-        let current_exe_str = current_exe
-            .to_str()
-            .context("Cannot convert current exe path to string")?;
         Ok(Self {
             id: BASE_POLICY_ID,
             name: String::from("base"),
             files: HashSet::from([
-                current_exe_str.to_string(),
-                String::from(constants::SERVICE_PATH),
-                String::from(constants::CONFIG_PATH),
-                String::from(constants::SEABEECTL_EXE),
-                String::from(constants::TEST_PROTECT_DIR), //TODO: remove
+                current_exe,
+                PathBuf::from(constants::SERVICE_PATH),
+                PathBuf::from(constants::CONFIG_PATH),
+                PathBuf::from(constants::SEABEECTL_EXE),
+                PathBuf::from(constants::TEST_PROTECT_DIR), //TODO: remove
             ]),
             config: config.policy_config.clone(),
             ..Default::default()
@@ -130,7 +127,7 @@ impl PolicyFile {
             "{}({}) scope: {}",
             self.name,
             self.id,
-            self.scope.iter().join(", ")
+            self.scope.iter().map(|p| p.display()).join(", ")
         )
     }
 }
@@ -144,7 +141,7 @@ impl std::fmt::Display for PolicyFile {
         write!(
             f,
             "{}: {}\n  signed by key id: {}\n  version: {}\n  scope: {}\n  files: {}\n  config:\n    maps: {}\n    pins: {}\n    files: {}\n    ptrace: {}\n    signals: {}\n    signal allow mask: {}",
-            self.id, self.name, key_id_str, self.version, self.scope.iter().join(", "), self.files.iter().join(", "), self.config.map_access, self.config.pin_access, self.config.file_write_access, self.config.ptrace_access, self.config.signal_access, self.config.signal_allow_mask
+            self.id, self.name, key_id_str, self.version, self.scope.iter().map(|p| p.display()).join(", "), self.files.iter().map(|p| p.display()).join(", "), self.config.map_access, self.config.pin_access, self.config.file_write_access, self.config.ptrace_access, self.config.signal_access, self.config.signal_allow_mask
         )
     }
 }

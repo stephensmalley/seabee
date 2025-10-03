@@ -25,7 +25,7 @@ use super::{
 };
 
 impl super::SeaBeePolicy {
-    /// Execute a [PolicyCommand] from seabeectl
+    /// Execute a [SocketCommand] from seabeectl
     ///
     /// Returns and error or text that will be written back to the seabeectl client.
     /// Many different possible errors based on the command.

@@ -22,9 +22,6 @@ pub const PIN_DIR: &str = "/sys/fs/bpf/seabee";
 /// The default directory for seabee files
 pub const SEABEE_DIR: &str = "/etc/seabee";
 
-// TODO remove
-pub const TEST_PROTECT_DIR: &str = "/etc/seabee/test_dir";
-
 /// The path to the seabeectl executable
 pub const SEABEECTL_EXE: &str = "/usr/sbin/seabeectl";
 

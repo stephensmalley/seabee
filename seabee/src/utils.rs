@@ -178,8 +178,8 @@ where
     F: FnMut(&walkdir::DirEntry) -> Result<()>,
 {
     for entry in walkdir::WalkDir::new(root) {
-        let entry = entry?;
-        f(&entry)?;
+        let entry = entry.map_err(|e| anyhow!("walk_wirk DirEntry error: {e}"))?;
+        f(&entry).map_err(|e| anyhow!("walk_with function error: {e}"))?;
     }
     Ok(())
 }
@@ -193,7 +193,7 @@ mod tests {
     use std::os::unix::fs::PermissionsExt;
     use tempfile::tempdir;
 
-    // 1. Test that walk_with visits all entries including root, dirs, files, and others.
+    // Test that walk_with visits all entries including root, dirs, files, and others.
     #[test]
     fn test_walk_visits_all_entries() -> Result<()> {
         let dir = tempdir()?;
@@ -229,7 +229,7 @@ mod tests {
         Ok(())
     }
 
-    // 2. Test that walk_with does not follow symlinks.
+    // Test that walk_with does not follow symlinks.
     #[test]
     fn test_walk_does_not_follow_symlinks() -> Result<()> {
         let dir = tempdir()?;
@@ -257,7 +257,7 @@ mod tests {
         Ok(())
     }
 
-    // 3. Test that walk_with works on deeply nested directories (5+ levels).
+    // Test that walk_with works on deeply nested directories (5+ levels).
     #[test]
     fn test_walk_deeply_nested_directories() -> Result<()> {
         let dir = tempdir()?;
@@ -346,5 +346,42 @@ mod tests {
         fs::set_permissions(&secret, fs::Permissions::from_mode(0o755))?;
 
         Ok(())
+    }
+
+    // Test: root is a single file, not a directory
+    #[test]
+    fn test_walk_with_file_as_root() -> Result<()> {
+        let dir = tempdir()?;
+        let file_path = dir.path().join("lonely.txt");
+        File::create(&file_path)?;
+
+        let mut visited = Vec::new();
+        walk_with(&file_path, |entry| {
+            visited.push(entry.path().to_path_buf());
+            Ok(())
+        })?;
+
+        // Expect exactly one entry: the file itself
+        assert_eq!(visited.len(), 1);
+        assert_eq!(visited[0], file_path);
+
+        Ok(())
+    }
+
+    // Test: root path does not exist
+    #[test]
+    fn test_walk_with_nonexistent_root() {
+        // Create a clearly non-existent path
+        let fake_path = PathBuf::from("/this/does/not/exist/123456");
+
+        let result = walk_with(&fake_path, |_entry| Ok(()));
+
+        // Should error out
+        assert!(result.is_err(), "Expected error for nonexistent root");
+        let err_str = format!("{:?}", result.unwrap_err());
+        assert!(
+            err_str.contains("No such file or directory"),
+            "Unexpected error: {err_str}"
+        );
     }
 }

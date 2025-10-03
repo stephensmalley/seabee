@@ -86,51 +86,30 @@ pub fn add_path_to_scope(maps: &SeaBeeMapHandles, path: &Path, id: u32) -> Resul
 /// Label all files for a policy with a given id
 pub fn label_files_for_policy(policy: &PolicyFile, sb_maps: &SeaBeeMapHandles) -> Result<()> {
     debug!("label_files_for_policy id: {}", policy.id);
-    let mut open_object = MaybeUninit::uninit();
-    let skel = load_label_file_skel(&mut open_object, sb_maps)?;
+
+    // ensure all files exist before labeling any of them
+    for path in &policy.files {
+        if !path.exists() {
+            return Err(anyhow!("label_files_for_policy: path '{}' does not exist.\nAll paths must exist on policy load. See the policy documentation.", path.display()));
+        }
+    }
 
     // label files
+    let mut open_object = MaybeUninit::uninit();
+    let skel = load_label_file_skel(&mut open_object, sb_maps)?;
     for path in &policy.files {
         utils::walk_with(path, |entry| {
-            if entry.path().is_file() || entry.path().is_dir() {
-                trigger_inode_labeling(&skel.maps.filename_to_policy_id, path, policy.id).map_err(
-                    |e| {
-                        anyhow!(
-                            "label_files_for_policy {}: failed to label {}\n{e}",
-                            policy.id,
-                            path.display()
-                        )
-                    },
-                )?;
-            } else {
-                println!("{} is not a file and was skipped", entry.path().display());
-            }
+            trigger_inode_labeling(&skel.maps.filename_to_policy_id, entry.path(), policy.id)
+                .map_err(|e| {
+                    anyhow!(
+                        "label_files_for_policy {}: failed to label {}\n{e}",
+                        policy.id,
+                        path.display()
+                    )
+                })?;
+
             Ok(())
         })?;
-
-        // } else if path.is_dir() {
-        //     for entry in WalkDir::new(path).into_iter().filter_map(Result::ok) {
-        //         let entry_path = entry.path();
-        //         if entry_path.is_file() {
-        //             trigger_inode_labeling(&skel.maps.filename_to_policy_id, entry_path, policy.id)
-        //                 .map_err(|e| {
-        //                     anyhow!(
-        //                         "label_files_for_policy {}: failed to label {}\n{e}",
-        //                         policy.id,
-        //                         entry_path.display()
-        //                     )
-        //                 })?;
-        //         }
-        //     }
-        //     // label_directory_recurse(&path, &skel.maps.filename_to_policy_id, policy.id)?;
-        // } else {
-        //     //TODO: should this be error? what if we skip and warn instead?
-        //     return Err(anyhow!(
-        //         "label_files_for_policy {}: failed to label {}: neither a file or a directory",
-        //         policy.id,
-        //         path.display()
-        //     ));
-        // }
     }
 
     Ok(())

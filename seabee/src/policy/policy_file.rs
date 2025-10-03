@@ -113,9 +113,10 @@ impl PolicyFile {
             files: HashSet::from([
                 current_exe,
                 PathBuf::from(constants::SERVICE_PATH),
-                PathBuf::from(constants::CONFIG_PATH),
+                PathBuf::from(constants::SEABEE_DIR),
                 PathBuf::from(constants::SEABEECTL_EXE),
-                PathBuf::from(constants::TEST_PROTECT_DIR), //TODO: remove
+                PathBuf::from(constants::PIN_DIR),
+                // SOCKET_PATH does not exist on policy load
             ]),
             config: config.policy_config.clone(),
             ..Default::default()

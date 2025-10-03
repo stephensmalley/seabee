@@ -17,11 +17,11 @@ impl Drop for SeaBee<'_> {
 pub fn cleanup_return() {
     // shutting down external communications should happen first
     if let Err(e) = utils::remove_if_exists(Path::new(constants::SOCKET_PATH)) {
-        error!("error cleaning up socket path: {}", e);
+        error!("cleanup_return failed on {}: {e}", constants::SOCKET_PATH);
     }
 
     // remove pin files and pin dir
     if let Err(e) = fs::remove_dir_all(constants::PIN_DIR) {
-        error!("error cleaning up pin dir: {}", e);
+        error!("cleanup_return failed on {}: {e}", constants::PIN_DIR);
     }
 }

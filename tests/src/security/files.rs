@@ -8,16 +8,25 @@ use std::{fs, path::PathBuf};
 /// the binary and configs used to do testing584252
 /// .
 use libtest_mimic::{Failed, Trial};
-use seabee::constants::{self, TEST_PROTECT_DIR};
+use seabee::constants::{self, POLICY_DIR};
 
 use crate::{command::TestCommandBuilder, create_test};
 
-//TODO: refactor to include directories
 const PROTECTED_FILES: [&str; 3] = [
     constants::CONFIG_PATH,
     constants::SEABEECTL_EXE,
     constants::SERVICE_PATH,
 ];
+
+fn try_remove_dir_all(path: &str) -> Result<(), Failed> {
+    match fs::remove_dir_all(path) {
+        Ok(_) => Err(format!("try_remove_dir failed: {} was deleted", { path }).into()),
+        Err(e) => match e.kind() {
+            std::io::ErrorKind::PermissionDenied => Ok(()),
+            _ => Err(format!("Unexpected error during remove_dir_all: {e}").into()),
+        },
+    }
+}
 
 /// Attempts to remove a file testing that permission is denied
 fn try_unlink(path: &str) -> Result<(), Failed> {
@@ -69,20 +78,21 @@ fn security_file_deny_write() -> Result<(), Failed> {
     Ok(())
 }
 
-fn security_protect_directory() -> Result<(), Failed> {
-    match fs::remove_dir(TEST_PROTECT_DIR) {
-        Ok(_) => Err(format!("{TEST_PROTECT_DIR} was deleted").into()),
-        Err(e) => match e.kind() {
-            std::io::ErrorKind::PermissionDenied => Ok(()),
-            _ => Err(format!("Unexpected error during remove_dir: {e}").into()),
-        },
-    }
+// Tests that seabee protected directory cannot be removed
+fn security_deny_remove_seabee_dir() -> Result<(), Failed> {
+    try_remove_dir_all(constants::SEABEE_DIR)
+}
+
+// Tests that a single protected subdirectory cannot be removed
+fn security_deny_remove_policy_dir() -> Result<(), Failed> {
+    try_remove_dir_all(POLICY_DIR)
 }
 
 pub fn tests() -> Vec<Trial> {
     vec![
         create_test!(security_file_deny_unlink),
         create_test!(security_file_deny_write),
-        create_test!(security_protect_directory),
+        create_test!(security_deny_remove_seabee_dir),
+        create_test!(security_deny_remove_policy_dir),
     ]
 }

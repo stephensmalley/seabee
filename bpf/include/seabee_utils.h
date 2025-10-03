@@ -210,29 +210,32 @@ static __always_inline void label_task(struct task_struct  *task,
                                        const unsigned char *task_name,
                                        u32                  policy_id)
 {
-	// Ensure task is not already associated with a policy
 	u32 current_pol_id = get_object_valid_policy_id(task, OBJECT_TYPE_TASK);
-	if (current_pol_id) {
+	if (current_pol_id == policy_id) {
+		// Already correctly labled
+		return;
+	} else if (current_pol_id != NO_POL_ID) {
+		// Already labled with differnt label
 		u64 log[4] = { (u64)task_name, (u64)task->tgid, (u64)policy_id,
 			           (u64)current_pol_id };
 		log_generic_msg(
 			LOG_LEVEL_ERROR, LOG_REASON_ERROR,
 			"failed to label task %s(%d) as %d. Task already belongs to policy %d",
 			log, sizeof(log));
-		return;
-	}
-
-	// Assign a new policy id
-	struct seabee_task_data  new_data      = { policy_id, 0 };
-	struct seabee_task_data *new_data_blob = bpf_task_storage_get(
-		&task_storage, task, &new_data, BPF_LOCAL_STORAGE_GET_F_CREATE);
-	u64 log[3] = { (u64)task_name, (u64)task->tgid, (u64)policy_id };
-	if (new_data_blob) {
-		log_generic_msg(LOG_LEVEL_DEBUG, LOG_REASON_DEBUG,
-		                "label task %s(%d) as %d", log, sizeof(log));
 	} else {
-		log_generic_msg(LOG_LEVEL_ERROR, LOG_REASON_ERROR,
-		                "failed to label task %s(%d) as %d", log, sizeof(log));
+		// Label with new policy id
+		struct seabee_task_data  new_data      = { policy_id, 0 };
+		struct seabee_task_data *new_data_blob = bpf_task_storage_get(
+			&task_storage, task, &new_data, BPF_LOCAL_STORAGE_GET_F_CREATE);
+		u64 log[3] = { (u64)task_name, (u64)task->tgid, (u64)policy_id };
+		if (new_data_blob) {
+			log_generic_msg(LOG_LEVEL_DEBUG, LOG_REASON_DEBUG,
+			                "label task %s(%d) as %d", log, sizeof(log));
+		} else {
+			log_generic_msg(LOG_LEVEL_ERROR, LOG_REASON_ERROR,
+			                "failed to label task %s(%d) as %d", log,
+			                sizeof(log));
+		}
 	}
 }
 
@@ -247,27 +250,30 @@ static __always_inline void label_inode(struct dentry *dentry,
                                         struct inode *inode, u32 *policy_id)
 {
 	const unsigned char *name = dentry->d_name.name;
-	// Ensure inode is not already associated with a policy
 	u32 current_pol_id = get_object_valid_policy_id(inode, OBJECT_TYPE_INODE);
-	if (current_pol_id) {
+	if (current_pol_id == *policy_id) {
+		// Already correctly labled
+		return;
+	} else if (current_pol_id != NO_POL_ID) {
+		// Has a differnt policy id already
 		u64 log[3] = { (u64)name, (u64)*policy_id, (u64)current_pol_id };
 		log_generic_msg(
 			LOG_LEVEL_ERROR, LOG_REASON_ERROR,
 			"failed to label inode for %s as %d. Inode already belongs to policy %d",
 			log, sizeof(log));
-		return;
-	}
-
-	// Assign new inode policy id
-	u32 *label  = bpf_inode_storage_get(&inode_storage, inode, policy_id,
-	                                    BPF_LOCAL_STORAGE_GET_F_CREATE);
-	u64  log[2] = { (u64)name, (u64)*policy_id };
-	if (label) {
-		log_generic_msg(LOG_LEVEL_TRACE, LOG_REASON_DEBUG,
-		                "label inode for '%s' as %d", log, sizeof(log));
 	} else {
-		log_generic_msg(LOG_LEVEL_ERROR, LOG_REASON_ERROR,
-		                "failed to label inode for %s as %d", log, sizeof(log));
+		// Assign new inode policy id
+		u32 *label  = bpf_inode_storage_get(&inode_storage, inode, policy_id,
+		                                    BPF_LOCAL_STORAGE_GET_F_CREATE);
+		u64  log[2] = { (u64)name, (u64)*policy_id };
+		if (label) {
+			log_generic_msg(LOG_LEVEL_TRACE, LOG_REASON_DEBUG,
+			                "label inode for '%s' as %d", log, sizeof(log));
+		} else {
+			log_generic_msg(LOG_LEVEL_ERROR, LOG_REASON_ERROR,
+			                "failed to label inode for %s as %d", log,
+			                sizeof(log));
+		}
 	}
 }
 

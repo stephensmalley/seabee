@@ -684,13 +684,9 @@ int BPF_PROG(seabee_label_child_process, struct task_struct *child_task,
 	if (parent_task_pol_id == NO_POL_ID) {
 		return ALLOW;
 	}
-	// only label if child does not already have a label
-	u32 child_task_pol_id = get_target_task_pol_id(child_task);
-	if (child_task_pol_id == NO_POL_ID) {
-		label_task(child_task, (const unsigned char *)child_task->comm,
-		           parent_task_pol_id);
-	}
 
+	label_task(child_task, (const unsigned char *)child_task->comm,
+	           parent_task_pol_id);
 	return ALLOW;
 }
 
@@ -755,12 +751,11 @@ int BPF_PROG(seabee_start_pin, int cmd, union bpf_attr *attr, unsigned int size,
  * This hook is called when a dentry becomes associted with an inode.
  */
 SEC("lsm/d_instantiate")
-int BPF_PROG(seabee_label_pin, struct dentry *dentry, struct inode *inode,
-             int ret)
+int BPF_PROG(seabee_label_pin, struct dentry *dentry, struct inode *inode)
 {
 	struct seabee_task_data *data = get_task_data();
 	if (data && data->pol_id != NO_POL_ID && data->is_pinning) {
-		label_inode(dentry, inode, &data->pol_id);
+		label_inode(dentry, inode, data->pol_id);
 	}
 	return ALLOW;
 }
@@ -769,9 +764,32 @@ int BPF_PROG(seabee_label_pin, struct dentry *dentry, struct inode *inode,
  * @brief Used to identify that a process has finished pinning
  */
 SEC("tracepoint/syscalls/sys_exit_bpf")
-int BPF_PROG(seabee_stop_pin, struct dentry *dentry, struct inode *inode,
-             int ret)
+int BPF_PROG(seabee_stop_pin, struct dentry *dentry, struct inode *inode)
 {
 	set_task_pinning(false);
+	return ALLOW;
+}
+
+/**
+ * @brief Label inodes created at runtime giving them the same
+ * label as the parent
+ *
+ * security_d_instantiate is called whenever a dentry is first associated with
+ * an inode. That could be on creation or when it is first looked up.
+ *
+ * @param dentry dentry
+ * @param inode inode
+*/
+SEC("lsm/d_instantiate")
+int BPF_PROG(seabee_label_inode_runtime, struct dentry *dentry,
+             struct inode *inode)
+{
+	// don't label if parent has no label
+	u32 parent_pol_id = get_inode_pol_id(dentry->d_parent->d_inode);
+	if (parent_pol_id == NO_POL_ID) {
+		return ALLOW;
+	}
+	// only label if child does not already have a label
+	label_inode(dentry, inode, parent_pol_id);
 	return ALLOW;
 }

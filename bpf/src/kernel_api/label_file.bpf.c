@@ -74,19 +74,10 @@ int BPF_PROG(seabee_label_target_path, const struct path *path)
 	// get policy_id and label inode
 	u32 *policy_id = bpf_map_lookup_elem(&filename_to_policy_id, &name_copy);
 	if (policy_id) {
-		label_inode(path->dentry, path->dentry->d_inode, policy_id);
+		label_inode(path->dentry, path->dentry->d_inode, *policy_id);
 		// DENY signals to userspace that labeling worked
 		return DENY;
 	}
 
 	return ALLOW;
 }
-
-//use this to label files automatically
-// SEC("lsm/d_instantiate")
-// int BPF_PROG(seabee_label_target_dir, struct dentry *dentry, struct inode *inode,
-//              int ret)
-// {
-// 	bpf_printk("d_instatiate: %s", dentry->d_name.name);
-// 	return ALLOW;
-// }

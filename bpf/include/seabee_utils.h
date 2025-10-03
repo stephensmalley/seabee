@@ -82,6 +82,18 @@ static __always_inline struct c_policy_config *get_policy_config(u32 policy_id)
 }
 
 /**
+ * @brief checks if there is a valid policy configuration for the policy id
+ *
+ * @param policy_id target policy id
+ *
+ * @return true if the policy id has a valid config, false otherwise
+ */
+static __always_inline bool is_valid_policy_id(u32 policy_id)
+{
+	return get_policy_config(policy_id) != NULL;
+}
+
+/**
  * @brief gets the data associated with a particular task
  *
  * @param t target task
@@ -192,8 +204,7 @@ static __always_inline u32 get_object_valid_policy_id(void            *object,
 		break;
 	}
 	// check if label has a policy
-	struct c_policy_config *cfg = get_policy_config(current_pol_id);
-	if (cfg) {
+	if (is_valid_policy_id(current_pol_id)) {
 		return current_pol_id;
 	}
 	//TODO: should we find a way to reset of the policy ID to zero if there is no policy?
@@ -214,6 +225,16 @@ static __always_inline void label_task(struct task_struct  *task,
 	if (current_pol_id == policy_id) {
 		// Already correctly labled
 		return;
+	} else if (!is_valid_policy_id(policy_id)) {
+		// Don't propogate invalid policy ids
+		u64 log[3] = {
+			(u64)task_name,
+			(u64)task->tgid,
+			(u64)policy_id,
+		};
+		log_generic_msg(LOG_LEVEL_TRACE, LOG_REASON_DEBUG,
+		                "Did not label task %s(%d) since %d is invalid", log,
+		                sizeof(log));
 	} else if (current_pol_id != NO_POL_ID) {
 		// Already labled with differnt label
 		u64 log[4] = { (u64)task_name, (u64)task->tgid, (u64)policy_id,
@@ -247,25 +268,31 @@ static __always_inline void label_task(struct task_struct  *task,
  * @param policy_id the label to use
  */
 static __always_inline void label_inode(struct dentry *dentry,
-                                        struct inode *inode, u32 *policy_id)
+                                        struct inode *inode, u32 policy_id)
 {
 	const unsigned char *name = dentry->d_name.name;
 	u32 current_pol_id = get_object_valid_policy_id(inode, OBJECT_TYPE_INODE);
-	if (current_pol_id == *policy_id) {
+	if (current_pol_id == policy_id) {
 		// Already correctly labled
 		return;
+	} else if (!is_valid_policy_id(policy_id)) {
+		// Don't propogate invalid policy ids
+		u64 log[3] = { (u64)name, (u64)policy_id };
+		log_generic_msg(LOG_LEVEL_TRACE, LOG_REASON_DEBUG,
+		                "Did not label inode %s since %d is invalid", log,
+		                sizeof(log));
 	} else if (current_pol_id != NO_POL_ID) {
 		// Has a differnt policy id already
-		u64 log[3] = { (u64)name, (u64)*policy_id, (u64)current_pol_id };
+		u64 log[3] = { (u64)name, (u64)policy_id, (u64)current_pol_id };
 		log_generic_msg(
 			LOG_LEVEL_ERROR, LOG_REASON_ERROR,
 			"failed to label inode for %s as %d. Inode already belongs to policy %d",
 			log, sizeof(log));
 	} else {
 		// Assign new inode policy id
-		u32 *label  = bpf_inode_storage_get(&inode_storage, inode, policy_id,
+		u32 *label  = bpf_inode_storage_get(&inode_storage, inode, &policy_id,
 		                                    BPF_LOCAL_STORAGE_GET_F_CREATE);
-		u64  log[2] = { (u64)name, (u64)*policy_id };
+		u64  log[2] = { (u64)name, (u64)policy_id };
 		if (label) {
 			log_generic_msg(LOG_LEVEL_TRACE, LOG_REASON_DEBUG,
 			                "label inode for '%s' as %d", log, sizeof(log));

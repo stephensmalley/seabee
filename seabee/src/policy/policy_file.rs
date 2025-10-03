@@ -19,16 +19,19 @@ pub const BASE_POLICY_ID: u32 = bpf::seabee::BASE_POLICY_ID;
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(default)]
+#[serde(deny_unknown_fields)]
 #[serde_as]
 pub struct PolicyConfig {
     /// Select map security level
     pub map_access: SecurityLevel,
     /// Select pin security level
     pub pin_access: SecurityLevel,
-    /// Protection level for files
+    /// Determines how to protect files in scope
     pub file_write_access: SecurityLevel,
+    /// Determines if how ptrace can be used on processes in scope
+    pub ptrace_access: SecurityLevel,
     /// Determines how to apply signal mask
-    pub signals: SecurityLevel,
+    pub signal_access: SecurityLevel,
     /// Determines which signals should be allowed
     #[serde_as(as = "DisplayFromStr")] // allows hex formatting
     pub signal_allow_mask: u64,
@@ -42,7 +45,8 @@ impl Default for PolicyConfig {
             map_access: SecurityLevel::block,
             pin_access: SecurityLevel::block,
             file_write_access: SecurityLevel::block,
-            signals: SecurityLevel::block,
+            ptrace_access: SecurityLevel::block,
+            signal_access: SecurityLevel::block,
             // generate a sigmask for all signals that can kill a process
             signal_allow_mask: utils::generate_sigmask(SecurityLevel::block),
         }
@@ -52,12 +56,15 @@ impl Default for PolicyConfig {
 impl PolicyConfig {
     pub fn to_c_policy_config(&self) -> bpf::seabee::c_policy_config {
         bpf::seabee::c_policy_config {
-            file_modification: self.file_write_access as u8,
+            signal_allow_mask: self.signal_allow_mask,
+            signal_access: self.signal_access as u8,
+            ptrace_access: self.ptrace_access as u8,
+            file_write_access: self.file_write_access as u8,
             map_access: self.map_access as u8,
-            pin_removal: self.pin_access as u8,
-            signals: self.signals as u8,
-            sigmask: self.signal_allow_mask,
-            padding: 0,
+            pin_access: self.pin_access as u8,
+            padding_1: 0,
+            padding_2: 0,
+            padding_3: 0,
         }
     }
 }
@@ -135,8 +142,8 @@ impl std::fmt::Display for PolicyFile {
         };
         write!(
             f,
-            "{}: {}\n  signed by key id: {}\n  version: {}\n  scope: {}\n  files: {}\n  config:\n    maps: {}\n    pins: {}\n    files: {}",
-            self.id, self.name, key_id_str, self.version, self.scope.iter().join(", "), self.files.iter().join(", "), self.config.map_access, self.config.pin_access, self.config.file_write_access,
+            "{}: {}\n  signed by key id: {}\n  version: {}\n  scope: {}\n  files: {}\n  config:\n    maps: {}\n    pins: {}\n    files: {}\n    ptrace: {}\n    signals: {}\n    signal allow mask: {}",
+            self.id, self.name, key_id_str, self.version, self.scope.iter().join(", "), self.files.iter().join(", "), self.config.map_access, self.config.pin_access, self.config.file_write_access, self.config.ptrace_access, self.config.signal_access, self.config.signal_allow_mask
         )
     }
 }

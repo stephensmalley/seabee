@@ -85,17 +85,19 @@ static inline void log_kernel_load_data(enum LogLevel  level,
 	}
 }
 
-static inline void log_ptrace_access_check(enum LogLevel  level,
-                                           enum LogReason reason,
-                                           int target_pid, char *target_comm)
+static inline void log_ptrace_access_check(enum LogLevel       level,
+                                           enum LogReason      reason,
+                                           struct task_struct *tracee, u32 mode,
+                                           u32 pol_id)
 {
 	struct ptrace_access_check_log *log;
 	log = log_buf(level, reason, EVENT_TYPE_PTRACE_ACCESS_CHECK, sizeof(*log),
-	              NO_POL_ID);
+	              pol_id);
 	if (log) {
-		log->target_pid = target_pid;
+		log->target_pid = tracee->tgid;
+		log->mode       = mode;
 		bpf_probe_read_str(log->target_comm, sizeof(log->target_comm),
-		                   target_comm);
+		                   tracee->comm);
 		bpf_ringbuf_submit(log, 0);
 	}
 }

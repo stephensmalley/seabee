@@ -1,50 +1,81 @@
 // SPDX-License-Identifier: Apache-2.0
 
-use std::process::{Child, Command};
+use std::{
+    process::{Child, Command},
+    sync::{
+        atomic::{AtomicU32, Ordering},
+        OnceLock,
+    },
+};
 
 use anyhow::{anyhow, Result};
 use libtest_mimic::{Failed, Trial};
-use seabee::{constants::SEABEECTL_EXE, utils};
+use seabee::{config::SecurityLevel, constants::SEABEECTL_EXE, utils};
 use serde::Deserialize;
 
-use crate::{command::TestCommandBuilder, create_test, test_utils};
+use crate::{
+    command::TestCommandBuilder,
+    create_test,
+    test_utils::{self, PtraceOp},
+};
 
-use super::{shared::RSA_PUB, TEST_TOOL_PID};
+use super::shared::{RSA_PUB, RSA_PUB_ROOT_SIG};
+
+// Globals
+pub static TEST_TOOL_PID: OnceLock<AtomicU32> = OnceLock::new();
+pub const REMOVE_TEST_TOOL_POLICY: &str = "policies/remove_test_tool_policy.yaml";
+pub const REMOVE_TEST_TOOL_POLICY_SIG: &str = "crypto/sigs/remove-test-tool-policy.sign";
 
 // use debug policy for debug build
 #[cfg(debug_assertions)]
 mod test_tool_config {
     pub const TEST_TOOL_BIN: &str = "../target/debug/test_tool";
-    pub const TEST_TOOL_POLICY: &str = "policies/test_tool_debug_policy.yaml";
-    pub const TEST_TOOL_POLICY_SIG: &str = "crypto/sigs/test-tool-debug-policy.sign";
+    pub const TEST_TOOL_AUDIT_POLICY: &str = "policies/test_tool_debug_audit.yaml";
+    pub const TEST_TOOL_AUDIT_POLICY_SIG: &str = "crypto/sigs/test-tool-debug-audit.sign";
+    pub const TEST_TOOL_BLOCK_POLICY: &str = "policies/test_tool_debug_block.yaml";
+    pub const TEST_TOOL_BLOCK_POLICY_SIG: &str = "crypto/sigs/test-tool-debug-block.sign";
 }
 
 // use release policy for release build
 #[cfg(not(debug_assertions))]
 mod test_tool_config {
     pub const TEST_TOOL_BIN: &str = "../target/release/test_tool";
-    pub const TEST_TOOL_POLICY: &str = "policies/test_tool_release_policy.yaml";
-    pub const TEST_TOOL_POLICY_SIG: &str = "crypto/sigs/test-tool-release-policy.sign";
+    pub const TEST_TOOL_AUDIT_POLICY: &str = "policies/test_tool_release_audit.yaml";
+    pub const TEST_TOOL_AUDIT_POLICY_SIG: &str = "crypto/sigs/test-tool-release-audit.sign";
+    pub const TEST_TOOL_BLOCK_POLICY: &str = "policies/test_tool_release_block.yaml";
+    pub const TEST_TOOL_BLOCK_POLICY_SIG: &str = "crypto/sigs/test-tool-release-block.sign";
 }
 
 const TEST_TOOL_PIN: &str = "/sys/fs/bpf/test_tool_pin";
 const TEST_PROG_NAME: &str = "test_seabee";
 
-pub fn start_test_tool() -> Result<Child> {
+pub fn start_test_tool(level: SecurityLevel) -> Result<Child> {
     // add key
     Command::new(SEABEECTL_EXE)
         .args(["add-key", "-t", &utils::str_to_abs_path_str(RSA_PUB)?])
         .stdout(std::process::Stdio::null())
         .status()?;
 
+    // choose which policy to use
+    let (policy_file, policy_sig) = match level {
+        SecurityLevel::allow | SecurityLevel::audit => (
+            test_tool_config::TEST_TOOL_AUDIT_POLICY,
+            test_tool_config::TEST_TOOL_AUDIT_POLICY_SIG,
+        ),
+        SecurityLevel::block => (
+            test_tool_config::TEST_TOOL_BLOCK_POLICY,
+            test_tool_config::TEST_TOOL_BLOCK_POLICY_SIG,
+        ),
+    };
+
     // add policy
     Command::new(SEABEECTL_EXE)
         .args([
             "update",
             "-t",
-            &utils::str_to_abs_path_str(test_tool_config::TEST_TOOL_POLICY)?,
+            &utils::str_to_abs_path_str(policy_file)?,
             "-s",
-            &utils::str_to_abs_path_str(test_tool_config::TEST_TOOL_POLICY_SIG)?,
+            &utils::str_to_abs_path_str(policy_sig)?,
         ])
         .stdout(std::process::Stdio::null())
         .status()?;
@@ -61,6 +92,10 @@ pub fn start_test_tool() -> Result<Child> {
         }
         std::thread::sleep(std::time::Duration::from_secs(1))
     }
+    TEST_TOOL_PID
+        .get_or_init(|| AtomicU32::new(0))
+        .store(child.id(), Ordering::SeqCst);
+
     Ok(child)
 }
 
@@ -71,13 +106,27 @@ pub fn stop_test_tool(child: Child) -> Result<()> {
         return Err(anyhow!("Failed to send SIGINT to test tool"));
     }
 
-    // cleanup seabee
+    // remove policy
     Command::new(SEABEECTL_EXE)
-        .args(["clean", "policy"])
+        .args([
+            "remove",
+            "-t",
+            &utils::str_to_abs_path_str(REMOVE_TEST_TOOL_POLICY)?,
+            "-s",
+            &utils::str_to_abs_path_str(REMOVE_TEST_TOOL_POLICY_SIG)?,
+        ])
         .stdout(std::process::Stdio::null())
         .status()?;
+
+    // remove key
     Command::new(SEABEECTL_EXE)
-        .args(["clean", "keys"])
+        .args([
+            "remove-key",
+            "-t",
+            &utils::str_to_abs_path_str(RSA_PUB)?,
+            "-s",
+            &utils::str_to_abs_path_str(RSA_PUB_ROOT_SIG)?,
+        ])
         .stdout(std::process::Stdio::null())
         .status()?;
 
@@ -128,25 +177,83 @@ fn deny_map_access() -> Result<(), Failed> {
 
 /// Check that a null/0 signal can be sent to the process
 fn allow_signal_null() -> Result<(), Failed> {
-    test_utils::try_kill(0, *TEST_TOOL_PID.get().unwrap(), true)
+    test_utils::try_kill(0, TEST_TOOL_PID.get().unwrap().load(Ordering::SeqCst), true)
 }
 
 // /Check that a an allowed signal is allowed
 fn allow_signal_winch() -> Result<(), Failed> {
-    test_utils::try_kill(libc::SIGWINCH, *TEST_TOOL_PID.get().unwrap(), true)
+    test_utils::try_kill(
+        libc::SIGWINCH,
+        TEST_TOOL_PID.get().unwrap().load(Ordering::SeqCst),
+        true,
+    )
 }
 
 /// Check that a blocked signal is blocked
 fn deny_sigkill() -> Result<(), Failed> {
-    test_utils::try_kill(libc::SIGKILL, *TEST_TOOL_PID.get().unwrap(), false)
+    test_utils::try_kill(
+        libc::SIGKILL,
+        TEST_TOOL_PID.get().unwrap().load(Ordering::SeqCst),
+        false,
+    )
 }
 
-pub fn tests() -> Vec<Trial> {
+/// Check that ptrace is properly blocked
+fn deny_ptrace_attach() -> Result<(), Failed> {
+    test_utils::try_ptrace(
+        PtraceOp::Attach,
+        TEST_TOOL_PID.get().unwrap().load(Ordering::SeqCst),
+        false,
+    )
+}
+
+fn deny_ptrace_seize() -> Result<(), Failed> {
+    test_utils::try_ptrace(
+        PtraceOp::Seize,
+        TEST_TOOL_PID.get().unwrap().load(Ordering::SeqCst),
+        false,
+    )
+}
+
+/// Check that ptrace can be allowed as well
+fn allow_ptrace_attach() -> Result<(), Failed> {
+    test_utils::try_ptrace(
+        PtraceOp::Attach,
+        TEST_TOOL_PID.get().unwrap().load(Ordering::SeqCst),
+        true,
+    )
+}
+
+fn allow_ptrace_seize() -> Result<(), Failed> {
+    test_utils::try_ptrace(
+        PtraceOp::Seize,
+        TEST_TOOL_PID.get().unwrap().load(Ordering::SeqCst),
+        true,
+    )
+}
+
+fn block_tests() -> Vec<Trial> {
     vec![
         create_test!(deny_map_access),
         create_test!(deny_remove_pin),
         create_test!(allow_signal_null),
         create_test!(allow_signal_winch),
         create_test!(deny_sigkill),
+        create_test!(deny_ptrace_attach),
+        create_test!(deny_ptrace_seize),
     ]
+}
+
+fn audit_tests() -> Vec<Trial> {
+    vec![
+        create_test!(allow_ptrace_seize),
+        create_test!(allow_ptrace_attach),
+    ]
+}
+
+pub fn get_tests(level: SecurityLevel) -> Vec<Trial> {
+    match level {
+        SecurityLevel::allow | SecurityLevel::audit => audit_tests(),
+        SecurityLevel::block => block_tests(),
+    }
 }

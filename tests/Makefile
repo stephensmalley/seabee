@@ -13,19 +13,23 @@ generate-test-sigs:
 	@./crypto/gen_sigs.sh
 
 # run tests with debug binaries
-test: example-kmod test-kmod test-policy
-	sudo ../target/debug/integration_test
+test: integration-test policy-test
 
 # run tests with release binaries
-test-release: example-kmod test-kmod test-policy-release
+test-release: integration-test-release policy-test-release
+
+integration-test: example-kmod test-kmod
+	sudo ../target/debug/integration_test
+
+integration-release: example-kmod test-kmod
 	sudo ../target/release/integration_test
 
 # launch and test seabee policy with debug binaries
-test-policy: $(TEST_SERVICE_PATH) generate-test-sigs
+policy-test: $(TEST_SERVICE_PATH) generate-test-sigs
 	sudo ../target/debug/policy_test --test-threads=1
 
 # launch and test seabee policy with release binaries
-test-policy-release: $(TEST_SERVICE_PATH) generate-test-sigs
+policy-test-release: $(TEST_SERVICE_PATH) generate-test-sigs
 	sudo ../target/release/policy_test --test-threads=1
 
 # compile and compress 'example_kmod/hello_world_kmod.c'

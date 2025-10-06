@@ -102,14 +102,15 @@ static inline void log_ptrace_access_check(enum LogLevel       level,
 	}
 }
 
-static inline void log_inode_access(enum EventType type, enum LogLevel level,
-                                    enum LogReason       reason,
+static inline void log_inode_access(enum LogLevel level, enum LogReason reason,
+                                    enum InodeAction     action,
                                     const unsigned char *file_name,
                                     unsigned int         pol_id)
 {
 	struct inode_access_log *log;
-	log = log_buf(level, reason, type, sizeof(*log), pol_id);
+	log = log_buf(level, reason, EVENT_TYPE_FILE_ACCESS, sizeof(*log), pol_id);
 	if (log) {
+		log->action = action;
 		bpf_probe_read_str(log->name, sizeof(log->name), file_name);
 		bpf_ringbuf_submit(log, 0);
 	}

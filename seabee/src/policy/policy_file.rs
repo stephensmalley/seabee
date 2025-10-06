@@ -24,9 +24,9 @@ pub const BASE_POLICY_ID: u32 = bpf::seabee::BASE_POLICY_ID;
 pub struct PolicyConfig {
     /// Select map security level
     pub map_access: SecurityLevel,
-    /// Select pin security level
-    pub pin_access: SecurityLevel,
-    /// Determines how to protect files in scope
+    /// Wether or not pins should be tracked by SeaBee
+    pub include_pins: bool,
+    /// Security level for files and pins
     pub file_write_access: SecurityLevel,
     /// Determines if how ptrace can be used on processes in scope
     pub ptrace_access: SecurityLevel,
@@ -43,7 +43,7 @@ impl Default for PolicyConfig {
     fn default() -> Self {
         Self {
             map_access: SecurityLevel::block,
-            pin_access: SecurityLevel::block,
+            include_pins: true,
             file_write_access: SecurityLevel::block,
             ptrace_access: SecurityLevel::block,
             signal_access: SecurityLevel::block,
@@ -61,7 +61,7 @@ impl PolicyConfig {
             ptrace_access: self.ptrace_access as u8,
             file_write_access: self.file_write_access as u8,
             map_access: self.map_access as u8,
-            pin_access: self.pin_access as u8,
+            protect_pins: if self.include_pins { 1_u8 } else { 0_u8 },
             padding_1: 0,
             padding_2: 0,
             padding_3: 0,
@@ -142,7 +142,7 @@ impl std::fmt::Display for PolicyFile {
         write!(
             f,
             "{}: {}\n  signed by key id: {}\n  version: {}\n  scope: {}\n  files: {}\n  config:\n    maps: {}\n    pins: {}\n    files: {}\n    ptrace: {}\n    signals: {}\n    signal allow mask: {}",
-            self.id, self.name, key_id_str, self.version, self.scope.iter().map(|p| p.display()).join(", "), self.files.iter().map(|p| p.display()).join(", "), self.config.map_access, self.config.pin_access, self.config.file_write_access, self.config.ptrace_access, self.config.signal_access, self.config.signal_allow_mask
+            self.id, self.name, key_id_str, self.version, self.scope.iter().map(|p| p.display()).join(", "), self.files.iter().map(|p| p.display()).join(", "), self.config.map_access, self.config.include_pins, self.config.file_write_access, self.config.ptrace_access, self.config.signal_access, self.config.signal_allow_mask
         )
     }
 }

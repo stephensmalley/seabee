@@ -232,6 +232,10 @@ fn allow_ptrace_seize() -> Result<(), Failed> {
     )
 }
 
+fn allow_unlink_pin() -> Result<(), Failed> {
+    test_utils::try_unlink(TEST_TOOL_PIN, true)
+}
+
 // TODO: missing test case, prevent one policy from overwriting files/processes of another
 
 fn block_tests() -> Vec<Trial> {
@@ -250,6 +254,7 @@ fn audit_tests() -> Vec<Trial> {
     vec![
         create_test!(allow_ptrace_seize),
         create_test!(allow_ptrace_attach),
+        create_test!(allow_unlink_pin), // this test must be last
     ]
 }
 

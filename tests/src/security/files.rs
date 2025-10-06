@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-use std::{fs, path::PathBuf};
+use std::{fs, io::ErrorKind, os::unix::fs::PermissionsExt, path::PathBuf};
 
 /// Module to check the security of file protections
 ///
@@ -8,9 +8,9 @@ use std::{fs, path::PathBuf};
 /// the binary and configs used to do testing584252
 /// .
 use libtest_mimic::{Failed, Trial};
-use seabee::constants::{self, POLICY_DIR};
+use seabee::constants;
 
-use crate::{command::TestCommandBuilder, create_test};
+use crate::{command::TestCommandBuilder, create_test, test_utils};
 
 const PROTECTED_FILES: [&str; 3] = [
     constants::CONFIG_PATH,
@@ -26,17 +26,6 @@ fn try_remove_dir_all(path: &str) -> Result<(), Failed> {
             _ => Err(format!("Unexpected error during remove_dir_all: {e}").into()),
         },
     }
-}
-
-/// Attempts to remove a file testing that permission is denied
-fn try_unlink(path: &str) -> Result<(), Failed> {
-    TestCommandBuilder::default()
-        .program("rm")
-        .args(&[path])
-        .expected_rc(1)
-        .expected_stderr("Operation not permitted")
-        .build()?
-        .test()
 }
 
 /// Attempt to write to a file testing that permission is denied
@@ -60,10 +49,23 @@ fn try_write(path: &str, exe: bool) -> Result<(), Failed> {
     }
 }
 
+// try chmod and expect permission denied
+pub fn try_chmod(path: &str) -> Result<(), Failed> {
+    // Try to change permissions
+    let result = fs::set_permissions(path, fs::Permissions::from_mode(0o777));
+
+    // We expect a PermissionDenied error
+    match result {
+        Err(e) if e.kind() == ErrorKind::PermissionDenied => Ok(()),
+        Err(e) => Err(format!("try_chmod on {path}: unexpected error : {e}").into()),
+        Ok(_) => Err(format!("try_chmod on {path} succeeded").into()),
+    }
+}
+
 /// Tests that protected files cannot be deleted
 fn security_file_deny_unlink() -> Result<(), Failed> {
     for file in PROTECTED_FILES {
-        try_unlink(file)?
+        test_utils::try_unlink(file, false)?
     }
 
     Ok(())
@@ -85,7 +87,15 @@ fn security_deny_remove_seabee_dir() -> Result<(), Failed> {
 
 // Tests that a single protected subdirectory cannot be removed
 fn security_deny_remove_policy_dir() -> Result<(), Failed> {
-    try_remove_dir_all(POLICY_DIR)
+    try_remove_dir_all(constants::POLICY_DIR)
+}
+
+// Tests chmod fails on protected files
+// This tests the security_inode_setattr hook
+fn security_deny_chmod() -> Result<(), Failed> {
+    try_chmod(constants::POLICY_DIR)?;
+    try_chmod(constants::CONFIG_PATH)?;
+    Ok(())
 }
 
 pub fn tests() -> Vec<Trial> {
@@ -94,5 +104,6 @@ pub fn tests() -> Vec<Trial> {
         create_test!(security_file_deny_write),
         create_test!(security_deny_remove_seabee_dir),
         create_test!(security_deny_remove_policy_dir),
+        create_test!(security_deny_chmod),
     ]
 }

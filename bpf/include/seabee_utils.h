@@ -159,16 +159,22 @@ static __always_inline u32 get_task_pol_id()
  */
 static __always_inline void set_task_pinning(u32 flag)
 {
+	// Check task is tracked by SeaBee
 	struct task_struct      *task = get_task();
 	struct seabee_task_data *data =
 		bpf_task_storage_get(&task_storage, task, 0, 0);
 	if (data && data->pol_id != NO_POL_ID) {
-		// set flag if it has changed
-		if (data->is_pinning != flag) {
-			data->is_pinning = flag;
-			u64 log[3]       = { (u64)task->comm, (u64)task->tgid, (u64)flag };
-			log_generic_msg(LOG_LEVEL_TRACE, LOG_REASON_DEBUG,
-			                "set task %s(%d) pinning to %lu", log, sizeof(log));
+		// Check pin protections are enabled
+		struct c_policy_config *cfg = get_policy_config(data->pol_id);
+		if (cfg && cfg->protect_pins) {
+			// set flag if it has changed
+			if (data->is_pinning != flag) {
+				data->is_pinning = flag;
+				u64 log[3] = { (u64)task->comm, (u64)task->tgid, (u64)flag };
+				log_generic_msg(LOG_LEVEL_TRACE, LOG_REASON_DEBUG,
+				                "set task %s(%d) pinning to %lu", log,
+				                sizeof(log));
+			}
 		}
 	}
 }

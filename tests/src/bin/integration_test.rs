@@ -79,7 +79,6 @@ fn functional_tests(args: &Arguments, log_level: LogLevel) -> Result<(), Failed>
     };
     // to allow the Linux state to be gathered
     config.policy_config.map_access = SecurityLevel::audit;
-    config.policy_config.pin_access = SecurityLevel::audit;
 
     let mut open_obj = MaybeUninit::uninit();
     let (sb, thread_control) = start_seabee_with_logging(config, &mut open_obj)?;
@@ -150,6 +149,6 @@ fn main() -> Result<(), Failed> {
     security_tests(&args, test_log_level)?;
     fork_integration_test(test_log_level)?;
 
-    info!("Successfully Completed All Tests!");
+    println!("Successfully Completed Integration Tests!");
     Ok(())
 }

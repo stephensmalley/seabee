@@ -9,12 +9,13 @@ use anyhow::{anyhow, Result};
 use nix::sys::signal::Signal;
 use tracing::{error, trace};
 
-use crate::cli::SecurityLevel;
+use crate::{cli::SecurityLevel, constants};
 
 /// Ensure the system has all requirements for running ebpf security
 pub fn verify_requirements() -> Result<()> {
     ensure_root()?;
     verify_bpf_lsm_enabled()?;
+    verify_seabee_unloaded()?;
     Ok(())
 }
 
@@ -34,6 +35,31 @@ pub fn ensure_root() -> Result<()> {
     } else {
         Ok(())
     }
+}
+
+/// Check that seabee programs have been unloaded
+pub fn verify_seabee_unloaded() -> Result<()> {
+    // after the SeaBee pins are removed, the kernel takes time to clean up the programs
+    // we will check if the programs have been removed by creating a file in /etc/seabee
+    // which should be blocked by an existing version of seabee
+
+    let testfile = Path::new(constants::SEABEE_DIR).join("test-file");
+    let max_wait = 10;
+    let mut waited = 0;
+    for _ in 1..max_wait {
+        if std::fs::File::create(&testfile).is_ok() {
+            std::fs::remove_file(&testfile)?;
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_secs(1));
+        waited += 1;
+    }
+
+    if waited >= max_wait {
+        return Err(anyhow!("failed 'verify_seabee_unloaded' check"));
+    }
+
+    Ok(())
 }
 
 /// Error if file does not have extensions in list of expected_ext

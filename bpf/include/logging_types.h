@@ -52,7 +52,7 @@ enum LogReason {
 enum EventType {
 	EVENT_TYPE_UNKNOWN = 0,
 	EVENT_TYPE_MSG,
-	EVENT_TYPE_INODE_ACCESS,
+	EVENT_TYPE_UNIX_STREAM_CONNECT,
 	EVENT_TYPE_SB_UMOUNT,
 	EVENT_TYPE_BPF_MAP,
 	EVENT_TYPE_TASK_KILL,
@@ -62,10 +62,21 @@ enum EventType {
 	EVENT_TYPE_PTRACE_ACCESS_CHECK,
 	EVENT_TYPE_BPF_WRITE_USER,
 	EVENT_TYPE_TASK_ALLOC,
-	// we cannot remove this log type because the file access
-	// permissions are different from the inode permissions
-	EVENT_TYPE_FILE_OPEN,
-	EVENT_TYPE_UNIX_STREAM_CONNECT,
+	EVENT_TYPE_FILE_ACCESS,
+};
+
+/**
+ * @brief Identifies a type of action taken on an inode
+*/
+enum InodeAction {
+	INODE_ACTION_UNKNOWN = 0,
+	FILE_OPEN,
+	INODE_PERMISSION,
+	INODE_UNLINK,
+	INODE_RMDIR,
+	INODE_RENAME,
+	INODE_SETATTR,
+	INODE_SETXATTR,
 };
 
 /**
@@ -171,11 +182,13 @@ struct ptrace_access_check_log {
 	unsigned char  target_comm[COMM_LEN];
 };
 
-/// @brief Log for various events that access inodes (file_open, inode_unlink)
+/// @brief Log for various events that access a dentry or and inode(file_open, inode_permission)
 struct inode_access_log {
 	/// @brief standard log header
 	struct log_hdr header;
-	/// @brief the first 128 characters of file name
+	/// @brief the action being taken on the inode, alias for {@link InodeAction}
+	unsigned int   action;
+	/// @brief the first 128 characters of file name, if known
 	unsigned char  name[MAX_STR_LEN];
 };
 

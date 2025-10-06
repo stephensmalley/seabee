@@ -3,6 +3,28 @@
 use libtest_mimic::Failed;
 use nix::sys::{ptrace, signal::Signal::SIGCONT};
 
+use crate::command::TestCommandBuilder;
+
+/// Attempts to remove a file testing that permission is denied
+pub fn try_unlink(path: &str, expect_success: bool) -> Result<(), Failed> {
+    if expect_success {
+        TestCommandBuilder::default()
+            .program("rm")
+            .args(&[path])
+            .expected_rc(0)
+            .build()?
+            .test()
+    } else {
+        TestCommandBuilder::default()
+            .program("rm")
+            .args(&[path])
+            .expected_rc(1)
+            .expected_stderr("Operation not permitted")
+            .build()?
+            .test()
+    }
+}
+
 /// Attempts to run `kill` with specified arguments and return code
 pub fn try_kill(signal: i32, pid: u32, expect_success: bool) -> Result<(), Failed> {
     let res = unsafe { libc::kill(pid as i32, signal) };

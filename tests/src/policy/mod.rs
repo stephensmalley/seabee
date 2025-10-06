@@ -46,9 +46,9 @@ fn start_daemon() -> Result<()> {
             waited += 1;
         }
     }
-    if waited == max_wait_seconds {
+    if waited >= max_wait_seconds {
         return Err(anyhow!(
-            "Daemon failed to start. Reached max wait time of {} seconds",
+            "Daemon failed to start. Reached max wait time of {} seconds.\nCheck logs with 'journalctl -u test_seabee -f'",
             max_wait_seconds
         ));
     }

@@ -9,4 +9,4 @@ files:
 config:
   map_access: allow
   file_write_access: audit
-  pin_access: block
+  include_pins: true

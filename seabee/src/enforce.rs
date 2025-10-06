@@ -71,7 +71,11 @@ pub fn load_ebpf(
     // protect objects
     kernel_api::label_seabee_process(&sb)?;
     kernel_api::label_maps_for_skel(&*sb.skel, BASE_POLICY_ID, &sb.maps)?;
-    kernel_api::label_pins(&pinned_links, BASE_POLICY_ID, &sb.maps)?;
+    kernel_api::label_seabee_pins(
+        &pinned_links,
+        sb.config.policy_config.include_pins,
+        &sb.maps,
+    )?;
     kernel_api::label_files_for_policy(&sb.policy.base_policy, &sb.maps)?;
 
     info!("Sucessfully loaded eBPF LSM");

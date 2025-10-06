@@ -128,10 +128,7 @@ fn rb_callback(data: &[u8]) -> i32 {
             EventType::EVENT_TYPE_MSG => {
                 log_struct!(generic_msg_log, header, data)
             }
-            EventType::EVENT_TYPE_INODE_ACCESS => {
-                log_struct!(inode_access_log, header, data)
-            }
-            EventType::EVENT_TYPE_FILE_OPEN => {
+            EventType::EVENT_TYPE_FILE_ACCESS => {
                 log_struct!(inode_access_log, header, data)
             }
             EventType::EVENT_TYPE_SB_UMOUNT => {
@@ -310,6 +307,12 @@ impl std::fmt::Display for ptrace_access_check_log {
 impl std::fmt::Display for inode_access_log {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let name = char_array_to_str(&self.name);
-        write!(f, "access to {name}")
+        let action =
+            InodeAction::from_repr(self.action).unwrap_or(InodeAction::INODE_ACTION_UNKNOWN);
+        let action_str = enum_str_no_prefix(action, "");
+        match action {
+            InodeAction::INODE_PERMISSION => write!(f, "{action_str}"),
+            _ => write!(f, "{action_str} on {name}"),
+        }
     }
 }

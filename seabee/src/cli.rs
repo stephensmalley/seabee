@@ -19,8 +19,8 @@ impl Default for Args {
             log_level: Some(LogLevelArg::info),
             // Enable map protection
             map_modification: Some(SecurityLevel::block),
-            // Enable pin protection
-            pin_modification: Some(SecurityLevel::block),
+            // Enable pin protection for SeaBee
+            include_pins: Some(true),
             // sigint is not allowed
             sigint: Some(SecurityLevel::block),
             // kernel modules are allowed
@@ -87,9 +87,9 @@ pub struct Args {
     #[arg(short, long)]
     map_modification: Option<SecurityLevel>,
 
-    /// Select pin security level
-    #[arg(short, long)]
-    pin_modification: Option<SecurityLevel>,
+    /// Should the file_write_access security level apply to eBPF pins in addition to files?
+    #[arg(short('p'), long)]
+    include_pins: Option<bool>,
 
     /// Is `kill -SIGINT <pid>` allowed to kill userspace process?
     #[arg(short, long)]
@@ -137,8 +137,8 @@ impl Args {
         if other.map_modification.is_some() {
             self.map_modification = other.map_modification;
         }
-        if other.pin_modification.is_some() {
-            self.pin_modification = other.pin_modification;
+        if other.include_pins.is_some() {
+            self.include_pins = other.include_pins;
         }
         if other.sigint.is_some() {
             self.sigint = other.sigint;
@@ -195,7 +195,7 @@ impl From<Args> for PolicyConfig {
     fn from(args: Args) -> Self {
         Self {
             map_access: args.map_modification.unwrap(),
-            pin_access: args.pin_modification.unwrap(),
+            include_pins: args.include_pins.unwrap(),
             file_write_access: args.daemon_modification.unwrap(),
             ptrace_access: args.ptrace.unwrap(),
             signal_access: SecurityLevel::block,
@@ -277,10 +277,7 @@ impl LogTypeCLI {
     /// Not every EventType is covered by a LogTypeCli
     fn to_event_types(&self) -> Vec<EventType> {
         match self {
-            LogTypeCLI::File => vec![
-                EventType::EVENT_TYPE_FILE_OPEN,
-                EventType::EVENT_TYPE_INODE_ACCESS,
-            ],
+            LogTypeCLI::File => vec![EventType::EVENT_TYPE_FILE_ACCESS],
             LogTypeCLI::Unmount => vec![EventType::EVENT_TYPE_SB_UMOUNT],
             LogTypeCLI::Map => vec![EventType::EVENT_TYPE_BPF_MAP],
             LogTypeCLI::Signal => vec![EventType::EVENT_TYPE_TASK_KILL],

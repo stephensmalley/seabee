@@ -144,11 +144,17 @@ pub fn unlabel_file(sb_maps: &SeaBeeMapHandles, file: &PathBuf) -> Result<()> {
     Ok(())
 }
 
-pub fn label_pins(
+// checks the seabee config and labels pins if protect_pins is true
+pub fn label_seabee_pins(
     pins: &Vec<PinnedLink>,
-    policy_id: u32,
+    protect_pins: bool,
     sb_maps: &SeaBeeMapHandles,
 ) -> Result<()> {
+    // check if pins should be protected
+    if !protect_pins {
+        return Ok(());
+    }
+
     debug!("Labeling pins...");
     let mut open_object = MaybeUninit::uninit();
     let skel = load_label_file_skel(&mut open_object, sb_maps)?;
@@ -156,7 +162,7 @@ pub fn label_pins(
     for pin in pins {
         match pin.link.pin_path() {
             Some(path) => {
-                trigger_inode_labeling(&skel.maps.filename_to_policy_id, &path, policy_id)?
+                trigger_inode_labeling(&skel.maps.filename_to_policy_id, &path, BASE_POLICY_ID)?
             }
             None => {
                 return Err(anyhow!("link was not pinned!"));

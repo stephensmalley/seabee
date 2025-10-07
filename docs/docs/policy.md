@@ -100,11 +100,22 @@ The policy config determines what protections this policy provides within the `s
 
 config has the following keys:
 
-- map_access: control access to eBPF maps within the scope (allow, audit, block)
-- file_write_access: control write access to the files listed in `files` seciton (allow, audit, block)
-- pin_access: control access to removing eBPF pins (allow, audit, block)
-- signals: control how to enforce the sigmask (allow, audit, block)
-- sigmask: determines which signals should be allowed
+- map_access: control access to eBPF maps within the scope (allow, audit, default = block)
+- file_write_access: control write access to the files listed in `files` section (allow, audit, block)
+- include_pins: should eBPF pins be protected in addition to `files`? If true, all eBPF pins created within
+scope will be protected according to the `file_write_access` level (true, false)
+- ptrace_access: control if ptrace can be used on processes in scope (allow, audit, block)
+- signal_access: control how to enforce the sigmask (allow, audit, block)
+- signal_allow_mask: determines which signals should be allowed (see below)
+
+If a key is not specified, the default will be used. Default options prefer more security.
+
+- map_access: block
+- file_write_access: block
+- include_pins: true
+- ptrace_access: block
+- signal_access: block
+- signal_allow_mask: `0x8430000` (see below for details)
 
 ### Sigmask
 
@@ -158,7 +169,7 @@ files:
 config:
   map_access: block
   file_write_access: block
-  pin_access: block
+  include_pins: true
   signals: block
   signal_allow_mask: 0x8430002
 ```

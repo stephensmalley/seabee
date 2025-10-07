@@ -270,6 +270,7 @@ fn seabeectl_clean(cmd: &CleanCommand) -> Result<String> {
 }
 
 fn seabeectl_config(cmd: &ConfigCommand) -> Result<String> {
+    utils::verify_seabee_unloaded()?;
     match cmd {
         ConfigCommand::Get => return Ok(fs::read_to_string(constants::CONFIG_PATH)?),
         ConfigCommand::Remove => fs::remove_file(constants::CONFIG_PATH)?,

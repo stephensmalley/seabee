@@ -43,12 +43,15 @@ pub fn verify_seabee_unloaded() -> Result<()> {
     // we will check if the programs have been removed by creating a file in /etc/seabee
     // which should be blocked by an existing version of seabee
 
-    let testfile = Path::new(constants::SEABEE_DIR).join("test-file");
-    let max_wait = 10;
+    let max_wait = 5;
     let mut waited = 0;
     for _ in 1..max_wait {
-        if std::fs::File::create(&testfile).is_ok() {
-            std::fs::remove_file(&testfile)?;
+        if fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(constants::CONFIG_PATH)
+            .is_ok()
+        {
             break;
         }
         std::thread::sleep(std::time::Duration::from_secs(1));
@@ -56,7 +59,10 @@ pub fn verify_seabee_unloaded() -> Result<()> {
     }
 
     if waited >= max_wait {
-        return Err(anyhow!("failed 'verify_seabee_unloaded' check"));
+        return Err(anyhow!(
+            "failed 'verify_seabee_unloaded' check. Lacking permissions to edit files in {}",
+            constants::SEABEE_DIR
+        ));
     }
 
     Ok(())

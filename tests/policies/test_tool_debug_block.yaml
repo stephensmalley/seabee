@@ -4,6 +4,7 @@ version: 1
 scope:
   - ../target/debug/test_tool
 files:
+  - /etc/seabee_test_tool
 config:
   map_access: block
   file_write_access: block

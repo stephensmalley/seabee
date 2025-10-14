@@ -5,8 +5,6 @@ use std::{fs, io::ErrorKind, os::unix::fs::PermissionsExt, path::Path};
 use libtest_mimic::Failed;
 use nix::sys::{ptrace, signal::Signal::SIGCONT};
 
-use crate::command::TestCommandBuilder;
-
 // try chmod and expect permission denied
 pub fn try_chmod(path: &str, expect_success: bool) -> Result<(), Failed> {
     // Try to change permissions
@@ -123,23 +121,25 @@ pub fn try_remove_dir_all(path: &str, expect_success: bool) -> Result<(), Failed
 
 /// Attempts to remove a file testing that permission is denied
 pub fn try_unlink_file(path: &str, expect_success: bool) -> Result<(), Failed> {
-    //TODO: maybe try the rust method for this to go faster?
-    if expect_success {
-        TestCommandBuilder::default()
-            .program("rm")
-            .args(&[path])
-            .expected_rc(0)
-            .build()?
-            .test()
-    } else {
-        TestCommandBuilder::default()
-            .program("rm")
-            .args(&[path])
-            .expected_rc(1)
-            .expected_stderr("Operation not permitted")
-            .build()?
-            .test()
+    match fs::remove_file(path) {
+        Ok(_) => {
+            if !expect_success {
+                return Err(format!(
+                    "try_unlink_file on {path} expected failure, but successfully deleted file"
+                )
+                .into());
+            }
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
+            if expect_success {
+                return Err(
+                    format!("try_unlink_file on {path} expected success, but was denied").into(),
+                );
+            }
+        }
+        Err(e) => return Err(format!("Unexpected error during remove_dir_all: {e}").into()),
     }
+    Ok(())
 }
 
 /// Attempts to run `kill` with specified arguments and return code

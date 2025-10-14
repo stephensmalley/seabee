@@ -25,7 +25,7 @@ extern struct task_storage  task_storage;
 extern struct policy_map    policy_map;
 extern struct map_to_pol_id map_to_pol_id;
 
-/// return NULL for no policy id
+/// return 0 for no policy id
 static __always_inline u32 get_inode_pol_id(struct inode *inode)
 {
 	u32 *policy_id = bpf_inode_storage_get(&inode_storage, inode, 0, 0);
@@ -332,13 +332,17 @@ static __always_inline int label_map_with_id(struct bpf_map *map, u32 policy_id)
 	// NOEXIST ensures that we cannot overwrite an existing map label
 	long err =
 		bpf_map_update_elem(&map_to_pol_id, &map, &map_data, BPF_NOEXIST);
-	u64 data[3] = { (u64)map_data.name, (u64)BPF_CORE_READ(map, id),
-		            (u64)policy_id };
+
 	if (err < 0) {
-		log_generic_msg(LOG_LEVEL_ERROR, LOG_REASON_ERROR,
-		                "Error: update elem failed map %s(%d) for policy %d",
-		                data, sizeof(data));
+		u64 data[4] = { (u64)map_data.name, (u64)BPF_CORE_READ(map, id),
+			            (u64)policy_id, (u64)err };
+		log_generic_msg(
+			LOG_LEVEL_ERROR, LOG_REASON_ERROR,
+			"Error: update elem failed map %s(%d) for policy %d, code: %d",
+			data, sizeof(data));
 	} else {
+		u64 data[3] = { (u64)map_data.name, (u64)BPF_CORE_READ(map, id),
+			            (u64)policy_id };
 		log_generic_msg(LOG_LEVEL_TRACE, LOG_REASON_DEBUG,
 		                "label map %s(%d) as %d", data, sizeof(data));
 	}

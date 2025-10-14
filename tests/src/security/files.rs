@@ -5,8 +5,7 @@ use std::path::{Path, PathBuf};
 ///
 /// IMPORTANT: if these tests fail, you may need to delete
 /// the `target` folder and recompile since they may corrupt
-/// the binary and configs used to do testing584252
-/// .
+/// the binary and configs used to do testing.
 use libtest_mimic::{Failed, Trial};
 use seabee::constants;
 

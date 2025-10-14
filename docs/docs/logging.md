@@ -15,4 +15,4 @@ When running SeaBee on the command line, logs will be printed the command line.
 When running SeaBee as a daemon, logs will be printed to the journal.
 
 - test logs: `sudo journalctl -u test_seabee -f`
-- non-test logs: `sudo journalctl -u seabe -f`
+- non-test logs: `sudo journalctl -u seabee -f`

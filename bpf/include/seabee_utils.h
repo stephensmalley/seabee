@@ -229,10 +229,10 @@ static __always_inline void label_task(struct task_struct  *task,
 {
 	u32 current_pol_id = get_object_valid_policy_id(task, OBJECT_TYPE_TASK);
 	if (current_pol_id == policy_id) {
-		// Already correctly labled
+		// Already correctly labeled
 		return;
 	} else if (!is_valid_policy_id(policy_id)) {
-		// Don't propogate invalid policy ids
+		// Don't propagate invalid policy ids
 		u64 log[3] = {
 			(u64)task_name,
 			(u64)task->tgid,
@@ -242,7 +242,7 @@ static __always_inline void label_task(struct task_struct  *task,
 		                "Did not label task %s(%d) since %d is invalid", log,
 		                sizeof(log));
 	} else if (current_pol_id != NO_POL_ID) {
-		// Already labled with differnt label
+		// Already labeled with different label
 		u64 log[4] = { (u64)task_name, (u64)task->tgid, (u64)policy_id,
 			           (u64)current_pol_id };
 		log_generic_msg(
@@ -279,16 +279,16 @@ static __always_inline void label_inode(struct dentry *dentry,
 	const unsigned char *name = dentry->d_name.name;
 	u32 current_pol_id = get_object_valid_policy_id(inode, OBJECT_TYPE_INODE);
 	if (current_pol_id == policy_id) {
-		// Already correctly labled
+		// Already correctly labeled
 		return;
 	} else if (!is_valid_policy_id(policy_id)) {
-		// Don't propogate invalid policy ids
+		// Don't propagate invalid policy ids
 		u64 log[3] = { (u64)name, (u64)policy_id };
 		log_generic_msg(LOG_LEVEL_TRACE, LOG_REASON_DEBUG,
 		                "Did not label inode %s since %d is invalid", log,
 		                sizeof(log));
 	} else if (current_pol_id != NO_POL_ID) {
-		// Has a differnt policy id already
+		// Has a different policy id already
 		u64 log[3] = { (u64)name, (u64)policy_id, (u64)current_pol_id };
 		log_generic_msg(
 			LOG_LEVEL_ERROR, LOG_REASON_ERROR,

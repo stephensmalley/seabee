@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 USE_APT=0
 USE_DNF=0

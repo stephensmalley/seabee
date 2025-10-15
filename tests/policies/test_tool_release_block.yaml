@@ -4,10 +4,11 @@ version: 1
 scope:
   - ../target/release/test_tool
 files:
+  - /etc/seabee_test_tool
 config:
   map_access: block
   file_write_access: block
-  pin_access: block
+  include_pins: true
   ptrace_access: block
   signal_access: block
   signal_allow_mask: 0x8430002

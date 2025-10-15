@@ -1,22 +1,18 @@
-# Logging Interpretation
+# Logging
 
-## Log Level Error
+## Log Levels
 
-Indicates something unexpected, a problem or bug in the code
+- Log Level Error: Indicates something unexpected, a problem or bug in the code
+- Log Level Warn: Most commonly used when SeaBee blocks an action, correlates with security level 'blocked' in policy
+- Log Level Info: Prints useful, but not security-related information to the user. Also correlates with security level 'audit' in policy.
+- Log Level Debug: Primarily identifies control flow to help debug where an error happens.
+- Log Level Trace: Similar to debug, but even more fine-grained. Includes labeling and kernel tracing information.
 
-## Log Level Warn
+## Viewing Logs
 
-Most commonly used when SeaBee blocks an action, correlates with security level 'blocked' in policy
+When running SeaBee on the command line, logs will be printed the command line.
 
-## Log Level Info
+When running SeaBee as a daemon, logs will be printed to the journal.
 
-Prints useful, but not security-related information to the user.
-Also correlates with security level 'audit' in policy.
-
-## Log Level Debug
-
-Primarily identifies control flow to help debug where an error happens
-
-## Log Level Trace
-
-Similar to debug, but even more fine-grained
+- test logs: `sudo journalctl -u test_seabee -f`
+- non-test logs: `sudo journalctl -u seabee -f`

@@ -8,4 +8,4 @@ files:
 config:
   map_access: audit
   file_write_access: audit
-  pin_access: audit
+  include_pins: true

@@ -16,6 +16,7 @@ use seabee::{
 mod daemon_status;
 mod protect_tool;
 mod shared;
+pub mod test_constants;
 mod unverified_policy;
 mod verified_keys;
 mod verified_policy;
@@ -36,7 +37,7 @@ fn start_daemon() -> Result<()> {
     }
 
     // wait for seabee daemon to be ready
-    let max_wait_seconds = 10;
+    let max_wait_seconds = 15;
     let mut waited = 0;
     while waited < max_wait_seconds {
         if daemon_is_ready()? {
@@ -46,9 +47,9 @@ fn start_daemon() -> Result<()> {
             waited += 1;
         }
     }
-    if waited == max_wait_seconds {
+    if waited >= max_wait_seconds {
         return Err(anyhow!(
-            "Daemon failed to start. Reached max wait time of {} seconds",
+            "Daemon failed to start. Reached max wait time of {} seconds.\nCheck logs with 'journalctl -u test_seabee -f'",
             max_wait_seconds
         ));
     }
@@ -176,7 +177,7 @@ fn run_test_tool_with_config(args: &Arguments, level: SecurityLevel) -> Result<(
 }
 
 fn run_protect_tool_tests(args: &Arguments) -> Result<(), Failed> {
-    // start tests
+    // start
     update_config(VERIFIED_POLICY_CONFIG)?;
     start_daemon()?;
     if let Err(e) = run_test_tool_with_config(args, SecurityLevel::block) {

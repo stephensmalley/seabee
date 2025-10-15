@@ -25,7 +25,7 @@ use super::{
 };
 
 impl super::SeaBeePolicy {
-    /// Execute a [PolicyCommand] from seabeectl
+    /// Execute a [SocketCommand] from seabeectl
     ///
     /// Returns and error or text that will be written back to the seabeectl client.
     /// Many different possible errors based on the command.
@@ -185,7 +185,7 @@ impl super::SeaBeePolicy {
         }
 
         // label files
-        kernel_api::label_files_from_policy(policy, maps)?;
+        kernel_api::label_files_for_policy(policy, maps)?;
 
         debug!("pushed policy to kernel: {}", policy.display_short());
         Ok(())
@@ -218,7 +218,7 @@ impl super::SeaBeePolicy {
             return Err(anyhow!("Policy update requires incrementing version number. Here is the current policy:\n{}", old_policy));
         }
         if old_policy.scope != new_policy.scope {
-            return Err(anyhow!("Not possible to change policy scope via an update. Instead, remove and replace policy.\nNew policy scope did not match old policy scope of: {}", old_policy.scope.iter().join(", ")));
+            return Err(anyhow!("Not possible to change policy scope via an update. Instead, remove and replace policy.\nNew policy scope did not match old policy scope of: {}", old_policy.scope.iter().map(|p| p.display()).join(", ")));
         }
 
         // assign policy id, key id

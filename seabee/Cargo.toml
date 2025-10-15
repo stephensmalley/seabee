@@ -25,7 +25,9 @@ serde_with = "3.14.0"
 serde_yaml = "0.9" # this create is deprecated, but is still the best for the job it seems
 strum.workspace = true
 strum_macros.workspace = true
+tempfile = "3.23.0"
 tracing.workspace = true
 tracing-journald = "0.3"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["std", "fmt", "ansi", "registry"] }
+walkdir = "2.5.0"
 zerocopy.workspace = true

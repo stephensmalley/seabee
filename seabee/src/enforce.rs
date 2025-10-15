@@ -38,7 +38,7 @@ pub fn load_ebpf(
         inode_storage: get_map("inode_storage", &*skel)?,
         log_ringbuf: get_map("log_ringbuf", &*skel)?,
         map_to_pol_id: get_map("map_to_pol_id", &*skel)?,
-        policy: get_map("policy_map", &*skel)?,
+        policy_map: get_map("policy_map", &*skel)?,
         task_storage: get_map("task_storage", &*skel)?,
         path_to_pol_id: get_map("path_to_pol_id", &*skel)?,
     };
@@ -71,8 +71,12 @@ pub fn load_ebpf(
     // protect objects
     kernel_api::label_seabee_process(&sb)?;
     kernel_api::label_maps_for_skel(&*sb.skel, BASE_POLICY_ID, &sb.maps)?;
-    kernel_api::label_pins(&pinned_links, BASE_POLICY_ID, &sb.maps)?;
-    kernel_api::label_files_from_policy(&sb.policy.base_policy, &sb.maps)?;
+    kernel_api::label_seabee_pins(
+        &pinned_links,
+        sb.config.policy_config.include_pins,
+        &sb.maps,
+    )?;
+    kernel_api::label_files_for_policy(&sb.policy.base_policy, &sb.maps)?;
 
     info!("Sucessfully loaded eBPF LSM");
     Ok(sb)

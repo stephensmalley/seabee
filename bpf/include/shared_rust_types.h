@@ -34,7 +34,7 @@ struct c_policy_config {
 	unsigned char      ptrace_access;     // 1
 	unsigned char      file_write_access; // 1
 	unsigned char      map_access;        // 1
-	unsigned char      pin_access;        // 1
+	unsigned char      protect_pins;      // 1
 	unsigned char      padding_1;         // 3
 	unsigned char      padding_2;
 	unsigned char      padding_3;

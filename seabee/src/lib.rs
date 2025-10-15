@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #![allow(non_camel_case_types)]
 
-use std::{mem::MaybeUninit, sync::Arc};
+use std::{mem::MaybeUninit, path::PathBuf, sync::Arc};
 
 use anyhow::Result;
 use libbpf_rs::{skel::Skel, MapHandle, OpenObject};
@@ -27,7 +27,7 @@ pub struct SeaBeeMapHandles {
     pub inode_storage: MapHandle,
     pub log_ringbuf: MapHandle,
     pub map_to_pol_id: MapHandle,
-    pub policy: MapHandle,
+    pub policy_map: MapHandle,
     pub task_storage: MapHandle,
     pub path_to_pol_id: MapHandle,
 }
@@ -80,7 +80,7 @@ pub fn seabee_init(config: Config, open_obj: &mut MaybeUninit<OpenObject>) -> Re
     // Label seabeectl to enable runtime updates
     kernel_api::add_path_to_scope(
         &sb.maps,
-        &constants::SEABEECTL_EXE.to_string(),
+        &PathBuf::from(constants::SEABEECTL_EXE),
         policy::policy_file::BASE_POLICY_ID,
     )?;
     debug!("exit SeaBee init");

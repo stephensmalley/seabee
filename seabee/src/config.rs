@@ -83,20 +83,24 @@ pub fn init_paths() -> Result<()> {
 }
 
 /// Parser-complete configuration
-///
-/// Make sure all updates are reflected in [Args] and its functions
+// Note: if modifying, make sure updates are reflected in cli::Args and its functions
 #[derive(Clone, Debug, PartialEq)]
 pub struct Config {
+    /// Specifiy the minimum log level that should be printed
     pub log_level: LogLevel,
+    /// Can SIGINT(2) be sent to SeaBee?
     pub sigint: SecurityLevel,
+    /// How should SeaBee handle kernel modules?
     pub kmod: SecurityLevel,
+    /// Tells how SeaBee should protect itself
     pub policy_config: PolicyConfig,
+    /// Allows some event types to be filtered out
     pub log_filter: HashSet<EventType>,
-    // will only be true during test cases
+    /// Will only be true during test cases
     pub test: bool,
-    // is signature verification for policies enabled?
+    /// Is signature verification for policies enabled?
     pub verify_policy: bool,
-    // is signature verification for new keys enabled?
+    /// Is signature verification for new keys enabled?
     pub verify_keys: bool,
 }
 

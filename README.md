@@ -18,6 +18,7 @@ Then try our [tutorial](./docs/docs/tutorial.md)
 Don't hesidate to create an issue or a PR! See [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 Warning: this project is still under active development, it is not yet ready for production use.
+Policy language and apis may receive changes breaking backwards compatibility.
 
 ## Documentation
 
@@ -27,6 +28,8 @@ Documentation is found under `docs/docs/`
   * Reload the shell `source ~/.bashrc`
   * `make docs` and then `make -C docs build`
 * To view the documentation in a browser: `make -C docs serve-build`
+
+TODO: move docs to github pages
 
 ## Disclaimer of Endorsement
 

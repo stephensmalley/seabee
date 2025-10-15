@@ -32,6 +32,24 @@ WARNING: bpftool not found for kernel 5.15.0-144
   Error: failed to generate vmlinux.h: failed to generate vmlinux using bpftool: exit status: 2
 ```
 
+### Issues with kernel modules
+
+Most of the issues with kernel modules can be solved by recompiling the kernel modules
+or rebooting.
+
+- `make clean` and `make test`
+- `sudo reboot`
+
+Some errors I've encountered and fix this way:
+
+```Bash
+# Failing to load kernel modules during testing
+modprobe: ERROR: could not insert 'test_kmod': Operation not permitted
+```
+
+[Issue 11](https://github.com/NationalSecurityAgency/seabee/issues/11) and [Issue 36](https://github.com/NationalSecurityAgency/seabee/issues/36)
+are related to kernel modules.
+
 ## SeaBee won't turn off
 
 - check with `systemctl status <daemon_name>` or with `ps -aux | grep seabee`
@@ -51,3 +69,6 @@ This will remove all keys, policies, the root key, configurations, ect.
 
 Once that is done, you should be able to use the [getting started](./getting_started.md) instructions to get SeaBee working again from scratch.
 
+## Checking the SeaBee Logs
+
+See [logging](./logging.md)

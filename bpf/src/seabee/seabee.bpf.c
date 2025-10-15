@@ -78,28 +78,6 @@ struct path_storage path_storage SEC(".maps");
 
 // Helpers
 
-/// return 0 for no policy id
-static __always_inline u32 get_inode_pol_id(struct inode *inode)
-{
-	u32 *policy_id = bpf_inode_storage_get(&inode_storage, inode, 0, 0);
-	if (policy_id) {
-		return *policy_id;
-	} else {
-		return NO_POL_ID;
-	}
-}
-
-/// return 0 for no policy id
-static __always_inline u32 get_map_pol_id(struct bpf_map *map)
-{
-	struct bpf_map_data *data = bpf_map_lookup_elem(&map_to_pol_id, &map);
-	if (data) {
-		return data->policy_id;
-	} else {
-		return NO_POL_ID;
-	}
-}
-
 static __always_inline enum SecurityLevel
 type_to_security_level(enum EventType type, u32 policy_id)
 {
@@ -113,10 +91,8 @@ type_to_security_level(enum EventType type, u32 policy_id)
 	}
 
 	switch (type) {
-	case EVENT_TYPE_FILE_OPEN:
+	case EVENT_TYPE_FILE_ACCESS:
 		return cfg->file_write_access;
-	case EVENT_TYPE_INODE_UNLINK:
-		return cfg->pin_access;
 	case EVENT_TYPE_BPF_MAP:
 		return cfg->map_access;
 	case EVENT_TYPE_PTRACE_ACCESS_CHECK:
@@ -133,10 +109,11 @@ type_to_security_level(enum EventType type, u32 policy_id)
 	}
 }
 
-static __always_inline u32 decide_inode_access(enum EventType type,
-                                               struct dentry *dentry)
+static __always_inline u32 decide_inode_access(enum InodeAction     action,
+                                               struct inode        *inode,
+                                               const unsigned char *name)
 {
-	u32 inode_pol_id = get_inode_pol_id(dentry->d_inode);
+	u32 inode_pol_id = get_inode_pol_id(inode);
 	if (inode_pol_id == NO_POL_ID) {
 		return ALLOW;
 	}
@@ -147,18 +124,24 @@ static __always_inline u32 decide_inode_access(enum EventType type,
 		return ALLOW;
 	}
 
+	// set file name
+	if (!name) {
+		name = (const unsigned char *)"<unknown file name>";
+	}
+
 	// take action based on security level
-	enum SecurityLevel level = type_to_security_level(type, inode_pol_id);
+	enum SecurityLevel level =
+		type_to_security_level(EVENT_TYPE_FILE_ACCESS, inode_pol_id);
 	switch (level) {
 	case SECURITY_ALLOW:
 		return ALLOW;
 	case SECURITY_AUDIT:
-		log_inode_access(type, LOG_LEVEL_INFO, LOG_REASON_AUDIT,
-		                 dentry->d_name.name, inode_pol_id);
+		log_inode_access(LOG_LEVEL_INFO, LOG_REASON_AUDIT, action, name,
+		                 inode_pol_id);
 		return ALLOW;
 	case SECURITY_BLOCK:
-		log_inode_access(type, LOG_LEVEL_WARN, LOG_REASON_DENY,
-		                 dentry->d_name.name, inode_pol_id);
+		log_inode_access(LOG_LEVEL_WARN, LOG_REASON_DENY, action, name,
+		                 inode_pol_id);
 		return DENY;
 	default: {
 		u64 data[] = { (u64)level };
@@ -362,23 +345,95 @@ int BPF_PROG(seabee_file_open, struct file *file)
 	if ((BPF_CORE_READ(file, f_mode) & FMODE_WRITE) == 0) {
 		return ALLOW;
 	}
-	return decide_inode_access(EVENT_TYPE_FILE_OPEN, file->f_path.dentry);
+	return decide_inode_access(FILE_OPEN, file->f_path.dentry->d_inode,
+	                           file->f_path.dentry->d_name.name);
 }
 
 /**
- * @brief Prevents unlinking/removing the protected pins.
+ * @brief prevent writes to protected inodes
+ *
+ * @param inode inode
+ * @param mask access mask
+*/
+SEC("lsm/inode_permission")
+int BPF_PROG(seabee_inode_permission, struct inode *inode, int mask)
+{
+	// only file write requests are considered
+	if ((mask & FMODE_WRITE) == 0) {
+		return ALLOW;
+	}
+	return decide_inode_access(INODE_PERMISSION, inode, NULL);
+}
+
+/**
+ * @brief Prevents unlinking/removing protected files or pins
  *
  * @param dir the parent directory
  * @param dentry the file being unlinked
- * @param ret the return code of the previous LSM hook
  *
  * @return {@link ALLOW} or {@link DENY}
  */
 SEC("lsm/inode_unlink")
-int BPF_PROG(seabee_inode_unlink, struct inode *dir, struct dentry *dentry,
-             int ret)
+int BPF_PROG(seabee_inode_unlink, struct inode *dir, struct dentry *dentry)
 {
-	return decide_inode_access(EVENT_TYPE_INODE_UNLINK, dentry);
+	return decide_inode_access(INODE_UNLINK, dentry->d_inode,
+	                           dentry->d_name.name);
+}
+
+/**
+ * @brief Prevents unlinking/removing protected folders.
+ *
+ * @param dir the parent directory
+ * @param dentry the directory to be removed
+ *
+ * @return {@link ALLOW} or {@link DENY}
+ */
+SEC("lsm/inode_rmdir")
+int BPF_PROG(seabee_inode_rmdir, struct inode *dir, struct dentry *dentry)
+{
+	return decide_inode_access(INODE_RMDIR, dentry->d_inode,
+	                           dentry->d_name.name);
+}
+
+/**
+ * @brief prevents modification of attributes on protected inodes
+ *
+ * @param dentry file
+*/
+SEC("lsm/inode_setattr")
+int BPF_PROG(seabee_inode_setattr, struct mnt_idmap *idmap,
+             struct dentry *dentry, struct iattr *attr)
+{
+	return decide_inode_access(INODE_SETATTR, dentry->d_inode,
+	                           dentry->d_name.name);
+}
+
+/**
+ * @brief prevent modification of extended attributes on protected inodes
+ *
+ * @param dentry file
+*/
+SEC("lsm/inode_setxattr")
+int BPF_PROG(seabee_inode_setxattr, struct mnt_idmap *idmap,
+             struct dentry *dentry, const char *name, const void *value,
+             size_t size, int flags)
+{
+	return decide_inode_access(INODE_SETXATTR, dentry->d_inode,
+	                           dentry->d_name.name);
+}
+
+/**
+ * @brief prevent rename of a protected inode
+ *
+ @param old_dentry the old file
+*/
+SEC("lsm/inode_rename")
+int BPF_PROG(seabee_inode_rename, struct inode *old_dir,
+             struct dentry *old_dentry, struct inode *new_dir,
+             struct dentry *new_dentry, unsigned int flags)
+{
+	return decide_inode_access(INODE_RENAME, old_dentry->d_inode,
+	                           old_dentry->d_name.name);
 }
 
 /**
@@ -694,13 +749,9 @@ int BPF_PROG(seabee_label_child_process, struct task_struct *child_task,
 	if (parent_task_pol_id == NO_POL_ID) {
 		return ALLOW;
 	}
-	// only label if child does not already have a label
-	u32 child_task_pol_id = get_target_task_pol_id(child_task);
-	if (child_task_pol_id == NO_POL_ID) {
-		label_task(child_task, (const unsigned char *)child_task->comm,
-		           parent_task_pol_id);
-	}
 
+	label_task(child_task, (const unsigned char *)child_task->comm,
+	           parent_task_pol_id);
 	return ALLOW;
 }
 
@@ -765,12 +816,11 @@ int BPF_PROG(seabee_start_pin, int cmd, union bpf_attr *attr, unsigned int size,
  * This hook is called when a dentry becomes associted with an inode.
  */
 SEC("lsm/d_instantiate")
-int BPF_PROG(seabee_label_pin, struct dentry *dentry, struct inode *inode,
-             int ret)
+int BPF_PROG(seabee_label_pin, struct dentry *dentry, struct inode *inode)
 {
 	struct seabee_task_data *data = get_task_data();
 	if (data && data->pol_id != NO_POL_ID && data->is_pinning) {
-		label_inode(dentry, inode, &data->pol_id);
+		label_inode(dentry, inode, data->pol_id);
 	}
 	return ALLOW;
 }
@@ -779,9 +829,32 @@ int BPF_PROG(seabee_label_pin, struct dentry *dentry, struct inode *inode,
  * @brief Used to identify that a process has finished pinning
  */
 SEC("tracepoint/syscalls/sys_exit_bpf")
-int BPF_PROG(seabee_stop_pin, struct dentry *dentry, struct inode *inode,
-             int ret)
+int BPF_PROG(seabee_stop_pin, struct dentry *dentry, struct inode *inode)
 {
 	set_task_pinning(false);
+	return ALLOW;
+}
+
+/**
+ * @brief Label inodes created at runtime giving them the same
+ * label as the parent
+ *
+ * security_d_instantiate is called whenever a dentry is first associated with
+ * an inode. That could be on creation or when it is first looked up.
+ *
+ * @param dentry dentry
+ * @param inode inode
+*/
+SEC("lsm/d_instantiate")
+int BPF_PROG(seabee_label_inode_runtime, struct dentry *dentry,
+             struct inode *inode)
+{
+	// don't label if parent has no label
+	u32 parent_pol_id = get_inode_pol_id(dentry->d_parent->d_inode);
+	if (parent_pol_id == NO_POL_ID) {
+		return ALLOW;
+	}
+	// only label if child does not already have a label
+	label_inode(dentry, inode, parent_pol_id);
 	return ALLOW;
 }

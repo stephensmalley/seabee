@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 TOP_DIR=$(dirname "$(dirname "$(realpath "$0" || true)")")
 
@@ -44,8 +45,8 @@ os_check() {
 # This builds bpftool from source which makes sure bpftool runs in the ci
 install_bpftool_ci() {
   if [[ "$DOCKER" -eq 1 && $USE_APT -eq 1 ]]; then
-    printf "Installing bpftool from source for compatability"
-    apt-get install -y make gcc llvm git libelf-dev
+    printf "Installing bpftool from source for compatability\n"
+    apt-get install -y make gcc llvm git libelf-dev libssl-dev
     git clone --recurse-submodules https://github.com/libbpf/bpftool.git
     cd bpftool/src && make
     cp bpftool /usr/local/bin/

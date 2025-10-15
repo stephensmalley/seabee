@@ -75,10 +75,24 @@ a policy.
 
 ### Files
 
-determines which files are protected by the policy
-it may be the case that there are repeated files between `scope` and `files`.
+This section determines which files are protected by the policy.
+It may be the case that there are repeated files between `scope` and `files`.
 This would be the case if you wanted to prevent an executable from being modified
 and allow a process created by that executable permissions to access other objects in the policy.
+
+The paths listed in this section can include directories, files, and some other types of linux directory entries.
+For each entry SeaBee will attempt to label the underlying inode.
+These labels are used to enforce security controls. If the entry is a directory,
+SeaBee uses the [walkdir crate](https://docs.rs/walkdir/latest/walkdir/) to recursively iterate through
+all subdirectories and label everything in those directories as well.
+This directory walk will not follow symlinks.
+
+All of paths you specify must exist when the policy is loaded.
+If one of your files does not exist on policy load, then SeaBee will generate an error.
+In order to protect files that are created at runtime, the current approach is to
+specify a directory and all files/directories created in that directory at runtime will
+be protected. If support for protecting files at runtime is important to you, leave a comment
+on our GitHub letting us know: [Issue 35](https://github.com/NationalSecurityAgency/seabee/issues/35).
 
 ### Config
 
@@ -86,11 +100,22 @@ The policy config determines what protections this policy provides within the `s
 
 config has the following keys:
 
-- map_access: control access to eBPF maps within the scope (allow, audit, block)
-- file_write_access: control write access to the files listed in `files` seciton (allow, audit, block)
-- pin_access: control access to removing eBPF pins (allow, audit, block)
-- signals: control how to enforce the sigmask (allow, audit, block)
-- sigmask: determines which signals should be allowed
+- map_access: control access to eBPF maps within the scope (allow, audit, default = block)
+- file_write_access: control write access to the files listed in `files` section (allow, audit, block)
+- include_pins: should eBPF pins be protected in addition to `files`? If true, all eBPF pins created within
+scope will be protected according to the `file_write_access` level (true, false)
+- ptrace_access: control if ptrace can be used on processes in scope (allow, audit, block)
+- signal_access: control how to enforce the sigmask (allow, audit, block)
+- signal_allow_mask: determines which signals should be allowed (see below)
+
+If a key is not specified, the default will be used. Default options prefer more security.
+
+- map_access: block
+- file_write_access: block
+- include_pins: true
+- ptrace_access: block
+- signal_access: block
+- signal_allow_mask: `0x8430000` (see below for details)
 
 ### Sigmask
 
@@ -144,7 +169,7 @@ files:
 config:
   map_access: block
   file_write_access: block
-  pin_access: block
+  include_pins: true
   signals: block
   signal_allow_mask: 0x8430002
 ```

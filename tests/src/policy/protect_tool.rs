@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use std::{
+    io::ErrorKind,
+    path::Path,
     process::{Child, Command},
     sync::{
         atomic::{AtomicU32, Ordering},
@@ -16,15 +18,20 @@ use serde::Deserialize;
 use crate::{
     command::TestCommandBuilder,
     create_test,
-    test_utils::{self, PtraceOp},
+    test_utils::{self, try_chmod, try_create_file, try_open, try_unlink_file, PtraceOp},
 };
 
-use super::shared::{RSA_PUB, RSA_PUB_ROOT_SIG};
+use super::{
+    shared::{RSA_PUB, RSA_PUB_ROOT_SIG},
+    test_constants,
+};
 
 // Globals
 pub static TEST_TOOL_PID: OnceLock<AtomicU32> = OnceLock::new();
 pub const REMOVE_TEST_TOOL_POLICY: &str = "policies/remove_test_tool_policy.yaml";
 pub const REMOVE_TEST_TOOL_POLICY_SIG: &str = "crypto/sigs/remove-test-tool-policy.sign";
+pub const TEST_TOOL_OVERWRITE: &str = "policies/test_tool_overwrite.yaml";
+pub const TEST_TOOL_OVERWRITE_SIG: &str = "policies/test_tool_overwrite.sign";
 
 // use debug policy for debug build
 #[cfg(debug_assertions)]
@@ -46,10 +53,19 @@ mod test_tool_config {
     pub const TEST_TOOL_BLOCK_POLICY_SIG: &str = "crypto/sigs/test-tool-release-block.sign";
 }
 
-const TEST_TOOL_PIN: &str = "/sys/fs/bpf/test_tool_pin";
 const TEST_PROG_NAME: &str = "test_seabee";
 
 pub fn start_test_tool(level: SecurityLevel) -> Result<Child> {
+    // create test dir
+    if let Err(e) = std::fs::create_dir(test_constants::TEST_TOOL_DIR) {
+        if e.kind() != ErrorKind::AlreadyExists {
+            return Err(anyhow!(
+                "failed create_dir on {}:{e}",
+                test_constants::TEST_TOOL_DIR
+            ));
+        }
+    }
+
     // add key
     Command::new(SEABEECTL_EXE)
         .args(["add-key", "-t", &utils::str_to_abs_path_str(RSA_PUB)?])
@@ -87,7 +103,7 @@ pub fn start_test_tool(level: SecurityLevel) -> Result<Child> {
 
     // wait up to 10 seconds for eBPF to load
     for _timeout in 1..10 {
-        if std::path::Path::new(TEST_TOOL_PIN).exists() {
+        if std::path::Path::new(test_constants::TEST_TOOL_PIN_PATH).exists() {
             break;
         }
         std::thread::sleep(std::time::Duration::from_secs(1))
@@ -133,8 +149,28 @@ pub fn stop_test_tool(child: Child) -> Result<()> {
     Ok(())
 }
 
+fn deny_policy_overwrite() -> Result<(), Failed> {
+    // Try to overwrite policy
+    TestCommandBuilder::default()
+        .program(SEABEECTL_EXE)
+        .args(&[
+            "update",
+            "-t",
+            &utils::str_to_abs_path_str(TEST_TOOL_OVERWRITE)?,
+            "-s",
+            &utils::str_to_abs_path_str(TEST_TOOL_OVERWRITE_SIG)?,
+        ])
+        .expected_rc(0)
+        .expected_stdout("Success");
+
+    // try to delete a protected file
+    try_unlink_file(test_constants::TEST_TOOL_FILE, false)?;
+
+    Ok(())
+}
+
 fn deny_remove_pin() -> Result<(), Failed> {
-    match std::fs::remove_file(TEST_TOOL_PIN) {
+    match std::fs::remove_file(test_constants::TEST_TOOL_PIN_PATH) {
         Err(e) => match e.kind() {
             std::io::ErrorKind::PermissionDenied => Ok(()),
             k => Err(format!("Got: ErrorKind {k}, Expected: PermissionDenied").into()),
@@ -215,6 +251,36 @@ fn deny_ptrace_seize() -> Result<(), Failed> {
     )
 }
 
+// check that directory is properly protected
+fn deny_delete_dir() -> Result<(), Failed> {
+    test_utils::try_remove_dir_all(test_constants::TEST_TOOL_DIR, false)
+}
+
+// check that file is properly protected
+fn deny_delete_file() -> Result<(), Failed> {
+    test_utils::try_unlink_file(test_constants::TEST_TOOL_FILE, false)
+}
+
+// check that new files cannot be created in protected directory
+fn deny_create_file() -> Result<(), Failed> {
+    test_utils::try_create_file(Path::new(test_constants::TEST_TOOL_FILE), false)
+}
+
+// check that protected files cannot be edited
+fn deny_open_file() -> Result<(), Failed> {
+    test_utils::try_open(Path::new(test_constants::TEST_TOOL_FILE), false, false)
+}
+
+// check that protected file attributes cannot be modified
+fn deny_chmod_file() -> Result<(), Failed> {
+    test_utils::try_chmod(test_constants::TEST_TOOL_FILE, false)
+}
+
+// check that protected directory attributes cannot be modified
+fn deny_chmod_dir() -> Result<(), Failed> {
+    test_utils::try_chmod(test_constants::TEST_TOOL_DIR, false)
+}
+
 /// Check that ptrace can be allowed as well
 fn allow_ptrace_attach() -> Result<(), Failed> {
     test_utils::try_ptrace(
@@ -232,6 +298,37 @@ fn allow_ptrace_seize() -> Result<(), Failed> {
     )
 }
 
+fn allow_open_file() -> Result<(), Failed> {
+    try_open(Path::new(test_constants::TEST_TOOL_FILE), false, true)
+}
+
+fn allow_create_file() -> Result<(), Failed> {
+    let path = Path::new(test_constants::TEST_TOOL_DIR).join("testfile");
+    try_create_file(&path, true)
+}
+
+fn allow_chmod_file() -> Result<(), Failed> {
+    try_chmod(test_constants::TEST_TOOL_FILE, true)
+}
+
+fn allow_chmod_dir() -> Result<(), Failed> {
+    try_chmod(test_constants::TEST_TOOL_DIR, true)
+}
+
+fn allow_delete_file() -> Result<(), Failed> {
+    test_utils::try_unlink_file(test_constants::TEST_TOOL_FILE, true)
+}
+
+fn allow_delete_dir() -> Result<(), Failed> {
+    test_utils::try_remove_dir_all(test_constants::TEST_TOOL_DIR, true)
+}
+
+fn allow_unlink_pin() -> Result<(), Failed> {
+    test_utils::try_unlink_file(test_constants::TEST_TOOL_PIN_PATH, true)
+}
+
+// TODO: missing test case, prevent one policy from overwriting files/processes of another
+
 fn block_tests() -> Vec<Trial> {
     vec![
         create_test!(deny_map_access),
@@ -241,13 +338,29 @@ fn block_tests() -> Vec<Trial> {
         create_test!(deny_sigkill),
         create_test!(deny_ptrace_attach),
         create_test!(deny_ptrace_seize),
+        create_test!(deny_delete_dir),
+        create_test!(deny_delete_file),
+        create_test!(deny_create_file),
+        create_test!(deny_open_file),
+        create_test!(deny_chmod_file),
+        create_test!(deny_chmod_dir),
+        create_test!(deny_policy_overwrite),
     ]
 }
 
 fn audit_tests() -> Vec<Trial> {
+    // Since this tests are allowing actions, the order matters
+    // consider where to place a test in the order when adding tests
     vec![
         create_test!(allow_ptrace_seize),
         create_test!(allow_ptrace_attach),
+        create_test!(allow_open_file),
+        create_test!(allow_create_file),
+        create_test!(allow_chmod_file),
+        create_test!(allow_chmod_dir),
+        create_test!(allow_delete_file),
+        create_test!(allow_delete_dir),
+        create_test!(allow_unlink_pin),
     ]
 }
 

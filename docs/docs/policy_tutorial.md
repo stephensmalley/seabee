@@ -67,9 +67,9 @@ spec:
 
 - add the policy:  `./bin/karmor vm policy add hostpolicy.yaml`
 - test the policy with `sleep: 10`
-- view the logs: `./bin/karmor logs --gRPC=:32767 --json`
+- view the logs: `./bin/karmor logs --gRPC=:32767`
 
-![Sleep 10 permission denied](./assets/images/sleep-denied.png)
+![Sleep 1 permission denied](./assets/images/sleep-denied.png)
 
 Great! This permission denied indicates that KubeArmor is working, lets demonstrate how SeaBee can improve the security.
 
@@ -187,11 +187,11 @@ In order to view the map, we use `sudo bpftool map dump name kubearmor_conta`
 
 ![Contents of KubeArmor containers map](./assets/images/dump-kubearmor-containers.png)
 
-This shows us that there is one entry, which we know is another eBPF map with id 100.
+This shows us that there is one entry, which we know is another eBPF map with id 606.
 
 We can now dump the contents of this "inner" map with bpftool as well.
 
-![Dumped contents of map id 100](./assets/images/dump-map-100.png)
+![Dumped contents of map id 100](./assets/images/dump-map-606.png)
 
 It looks like a long array with some bytes at the beginning. If we takes those bytes and interpret them as
 ascii characters...

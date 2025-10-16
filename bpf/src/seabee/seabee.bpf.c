@@ -401,8 +401,12 @@ int BPF_PROG(seabee_inode_rmdir, struct inode *dir, struct dentry *dentry)
  * @param dentry file
 */
 SEC("lsm/inode_setattr")
+#ifdef HAS_INODE_SETATTR_IDMAP
 int BPF_PROG(seabee_inode_setattr, struct mnt_idmap *idmap,
              struct dentry *dentry, struct iattr *attr)
+#else
+int BPF_PROG(seabee_inode_setattr, struct dentry *dentry, struct iattr *attr)
+#endif
 {
 	return decide_inode_access(INODE_SETATTR, dentry->d_inode,
 	                           dentry->d_name.name);

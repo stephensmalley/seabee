@@ -8,7 +8,11 @@ use std::{env, fs};
 use anyhow::{anyhow, Context, Result};
 use libbpf_cargo::SkeletonBuilder;
 
-const VMLINUX_FEATURES: [&str; 2] = ["bpf_map_create", "bpf_map_alloc_security"];
+// task storage map is newest bpf feature we use, used to detect if kernel version is too old
+const HAS_TASK_STORAGE_MAP: &str = "BPF_MAP_TYPE_TASK_STORAGE";
+const HAS_MAP_CREATE: &str = "bpf_map_create";
+const HAS_INODE_SETATTR_IDMAP: &str =
+    "(*inode_setattr)(struct mnt_idmap *, struct dentry *, struct iattr *)";
 
 /// Tells Cargo to rerun the build if the supplied file has changed
 fn track_file(header: &str) {
@@ -180,9 +184,16 @@ fn detect_vmlinux_features(vmlinux: &PathBuf) -> Result<HashSet<String>> {
     let file = fs::File::open(vmlinux)?;
     let reader = BufReader::new(file);
     let mut found = HashSet::new();
-    for line in reader.lines() {
+    for (index, line) in reader.lines().enumerate() {
         let line = line?;
-        for feat in VMLINUX_FEATURES {
+        if index == 23585 {
+            println!("line: '{}'", line);
+        }
+        for feat in [
+            HAS_MAP_CREATE,
+            HAS_INODE_SETATTR_IDMAP,
+            HAS_TASK_STORAGE_MAP,
+        ] {
             if line.contains(feat) {
                 found.insert(feat.to_string());
             }
@@ -190,17 +201,10 @@ fn detect_vmlinux_features(vmlinux: &PathBuf) -> Result<HashSet<String>> {
     }
 
     // validate features
-    if found.contains(VMLINUX_FEATURES[0]) && found.contains(VMLINUX_FEATURES[1]) {
+    if !found.contains(HAS_TASK_STORAGE_MAP) {
         return Err(anyhow!(
-            "Conflicting function definitions: '{}' and '{}'",
-            VMLINUX_FEATURES[0],
-            VMLINUX_FEATURES[1]
-        ));
-    } else if !found.contains(VMLINUX_FEATURES[0]) && !found.contains(VMLINUX_FEATURES[1]) {
-        return Err(anyhow!(
-            "Kernel no supported. No function definition found for '{}' or '{}'",
-            VMLINUX_FEATURES[0],
-            VMLINUX_FEATURES[1]
+            "Kernel not supported. Did not detect symbol for '{}'. Need at least 5.11.",
+            HAS_TASK_STORAGE_MAP,
         ));
     }
 
@@ -214,8 +218,11 @@ fn export_features_to_header(features: HashSet<String>, out_path: &Path) -> Resu
     writeln!(f, "// Auto-generated header from build.rs")?;
 
     for flag in features {
-        let macro_name = flag.to_uppercase();
-        writeln!(f, "#define HAS_{macro_name}")?;
+        if flag.contains(HAS_MAP_CREATE) {
+            writeln!(f, "#define HAS_MAP_CREATE")?;
+        } else if flag.contains(HAS_INODE_SETATTR_IDMAP) {
+            writeln!(f, "#define HAS_INODE_SETATTR_IDMAP")?;
+        }
     }
 
     Ok(())

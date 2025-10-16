@@ -7,6 +7,18 @@ The BPF-to-Rust-skeleton compilation uses the name of the `.bpf.c` file
 `my_bpf_program.bpf.c` will be converted into `mod MyBpfProgram;`
   and `MyBpfProgramSkelBuilder` and other `MyBpfProgram...` prefixes.
 
+## Adding new hooks
+
+When adding new LSM hooks, you have to be careful because the semantics of LSM hooks can change
+between kernel versions. Although changes are uncommon, they do happen. Make sure the test your
+code on all kernel versions when adding new hooks.
+
+If a hook changes between kernel versions, then you need to define two versions of the hook and
+determine which one to use at compile time. While there are some advantages to compiling multiple
+versions and choosing the correct version at runtime. This approach ran into other difficulties.
+This means that currently SeaBee must be compiled for the specific kernel version it is going to
+run on. For more information on this decision, see [issue #9](https://github.com/NationalSecurityAgency/seabee/issues/9)
+
 ## Logging
 
 So you've written up a new BPF program, that's great!

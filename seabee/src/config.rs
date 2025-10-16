@@ -27,7 +27,10 @@ static LOGGING: Once = Once::new();
 /// 1. Apply all other CLI arguments (if present).
 pub fn configure() -> Result<Config> {
     // Gather the config info using the default trace dispatcher
-    let default = tracing_subscriber::fmt().with_target(false).finish();
+    let default = tracing_subscriber::fmt()
+        .with_target(false)
+        // .with_max_level(tracing::Level::TRACE) // for debugging
+        .finish();
     let config = tracing::subscriber::with_default(default, || -> Result<Config> {
         let mut base_args = Args::default();
         init_paths()?;

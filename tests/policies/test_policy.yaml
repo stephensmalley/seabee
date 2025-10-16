@@ -7,5 +7,5 @@ files:
   - /etc/test_seabee_policy
 config:
   map_access: audit
-  file_write_access: audit
+  file_write_access: block
   include_pins: true

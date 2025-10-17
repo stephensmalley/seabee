@@ -8,19 +8,21 @@ use std::{
 
 use anyhow::{anyhow, Context, Result};
 use itertools::Itertools;
-use tracing::{debug, error, info, trace};
+use tracing::{debug, error, info, trace, warn};
 
 use crate::{
     constants::{self, SEABEE_ROOT_KEY_PATH},
     crypto::{SeaBeeDigest, SeaBeeKey},
     kernel_api,
+    policy::policy_file::ShutdownFile,
     seabeectl_lib::{KeyIdentifier, ObjIdentifier, SignedRequestInfo, SocketCommand},
+    utils::MACHINE_ID,
     SeaBeeMapHandles,
 };
 
 use super::{
     fs_api::{self, FileType},
-    policy_file::{PolicyFile, RemovePolicyYaml},
+    policy_file::{FromYamlPath, PolicyFile, RemovePolicyFile},
     ROOT_KEY_ID,
 };
 
@@ -52,6 +54,7 @@ impl super::SeaBeePolicy {
                 self.add_key(&request.target_path, &request.sig_path, &request.digest)?
             }
             SocketCommand::RemoveKey(request) => self.remove_key(request)?,
+            SocketCommand::Shutdown(request) => self.shutdown(&request)?,
         };
         info!("{}", info_string);
         Ok(output)
@@ -259,7 +262,7 @@ impl super::SeaBeePolicy {
         // Get policy
         let yaml_path = &request.target_path;
         let sig_path = &request.sig_path;
-        let input_policy = RemovePolicyYaml::from_path(yaml_path)?;
+        let input_policy = RemovePolicyFile::from_path(yaml_path)?;
         let target_policy = self.policies.get(&input_policy.name).context(anyhow!(
             "No policy with name '{}' was found.",
             input_policy.name
@@ -400,6 +403,46 @@ impl super::SeaBeePolicy {
             return Err(anyhow!("Key removed, but keylist was not correctly updated. This will cause an error on next restart.\nFix keylist manually at {}.\n{e}", constants::KEYLIST_PATH));
         }
         Ok(String::from("Success!"))
+    }
+
+    /// Shutdown Seabee if request is valid
+    fn shutdown(&self, request: &SignedRequestInfo) -> Result<String> {
+        // validate machine id
+        let shutdown_file = ShutdownFile::from_path(&request.target_path).map_err(|e| {
+            anyhow!(
+                "Failed to read shutdown file from path: {}\n{e}",
+                &request.target_path.display()
+            )
+        })?;
+        let expected = MACHINE_ID.get().unwrap();
+        let got = &shutdown_file.machine_id;
+        if got != expected {
+            let err_string = format!(
+                "Failed shutdown request from {}. Expected id: '{expected}' got: '{got}'",
+                &request.target_path.display(),
+            );
+            error!(err_string);
+            return Err(anyhow!(err_string));
+        }
+        // verify signature
+        self.verify_signature(
+            &request.target_path,
+            &request.sig_path,
+            &request.digest,
+            Some(ROOT_KEY_ID),
+        )?;
+
+        // shutdown seabee
+        warn!(
+            "Shutting down SeaBee on request from {}",
+            request.target_path.display()
+        );
+        let pid = std::process::id();
+        let nix_pid = nix::unistd::Pid::from_raw(pid as i32);
+        nix::sys::signal::kill(nix_pid, Some(nix::sys::signal::Signal::SIGINT))
+            .map_err(|e| anyhow!("failed to set SIGINT to self({pid}):{e}"))?;
+
+        Ok(String::from("Shutting down SeaBee...\nIt is recommended to delete the shutdown file and signature used to prevent malicious reuse of these files to disable SeaBee in the future."))
     }
 
     /// O(n) operation that returns the corresponding SeaBeeKey if one exists or None

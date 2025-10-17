@@ -61,9 +61,9 @@ pub fn seabee_init(config: Config, open_obj: &mut MaybeUninit<OpenObject>) -> Re
     // set the static LOG_LEVEL so that it can be used by various skeletons
     LOG_LEVEL.get_or_init(|| config.log_level);
     LOG_FILTER.get_or_init(|| config.log_filter.clone());
+    utils::init_machine_id()?;
 
     print_debug_info(&config);
-
     let policy = SeaBeePolicy::init(&config)?;
     let mut sb = match enforce::load_ebpf(config.clone(), policy, open_obj) {
         Ok(sb) => sb,

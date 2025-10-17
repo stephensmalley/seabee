@@ -6,7 +6,7 @@ use std::{
 
 use anyhow::{anyhow, Result};
 use itertools::Itertools;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 
 use crate::{
@@ -16,6 +16,19 @@ use crate::{
 
 const NO_POLICY_ID: u32 = bpf::seabee::NO_POL_ID;
 pub const BASE_POLICY_ID: u32 = bpf::seabee::BASE_POLICY_ID;
+
+pub trait FromYamlPath: DeserializeOwned {
+    fn from_path(path: &Path) -> Result<Self> {
+        utils::verify_file_has_ext(path, vec!["yaml", "yml"])?;
+        let request_str = match std::fs::read_to_string(path) {
+            Ok(s) => s,
+            Err(e) => return Err(anyhow!("error reading '{}' to string: {e}", path.display())),
+        };
+        Ok(serde_yaml::from_str(&request_str)?)
+    }
+}
+
+impl<T> FromYamlPath for T where T: DeserializeOwned {}
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(default)]
@@ -96,15 +109,6 @@ fn default_policy_id() -> u32 {
 }
 
 impl PolicyFile {
-    pub fn from_path(path: &PathBuf) -> Result<Self> {
-        utils::verify_file_has_ext(path, vec!["yaml", "yml"])?;
-        let policy_str = match std::fs::read_to_string(Path::new(path)) {
-            Ok(s) => s,
-            Err(e) => return Err(anyhow!("error reading '{}' to string: {e}", path.display())),
-        };
-        Ok(serde_yaml::from_str(&policy_str)?)
-    }
-
     pub fn base(config: &Config) -> Result<Self> {
         let current_exe = std::env::current_exe()?;
         Ok(Self {
@@ -156,18 +160,13 @@ impl PartialEq for PolicyFile {
 /// Minimum amount of information needed to remove a policy.
 /// Also the format of a signed yaml request to remove a policy.
 #[derive(Serialize, Deserialize)]
-pub struct RemovePolicyYaml {
+pub struct RemovePolicyFile {
     pub name: String,
     pub version: u32,
 }
 
-impl RemovePolicyYaml {
-    pub fn from_path(path: &PathBuf) -> Result<Self> {
-        utils::verify_file_has_ext(path, vec!["yaml", "yml"])?;
-        let request_str = match std::fs::read_to_string(path) {
-            Ok(s) => s,
-            Err(e) => return Err(anyhow!("error reading '{}' to string: {e}", path.display())),
-        };
-        Ok(serde_yaml::from_str(&request_str)?)
-    }
+/// Information needed to shutdown seabee
+#[derive(Serialize, Deserialize)]
+pub struct ShutdownFile {
+    pub machine_id: String,
 }

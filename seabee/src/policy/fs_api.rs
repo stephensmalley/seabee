@@ -8,7 +8,7 @@ use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use tracing::info;
 
-use super::policy_file::PolicyFile;
+use super::policy_file::{FromYamlPath, PolicyFile};
 use crate::{
     constants::{self, KEYLIST_PATH},
     crypto::{SeaBeeDigest, SeaBeeKey},

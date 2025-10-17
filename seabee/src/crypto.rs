@@ -18,7 +18,7 @@ use openssl::{
 use strum::IntoEnumIterator;
 use zerocopy::IntoBytes;
 
-use crate::{policy::policy_file::PolicyFile, utils};
+use crate::{policy::policy_file::{FromYamlPath, PolicyFile}, utils};
 
 /// A key used to verify SeaBeePolicy Updates
 #[derive(Debug, Clone)]

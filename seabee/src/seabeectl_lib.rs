@@ -116,6 +116,14 @@ pub enum SocketCommand {
     /// reverified with the new reduced set of keys.
     /// You cannot revoke the root key.
     RemoveKey(SignedRequestInfo),
+    /// Shutdown SeaBee with a signed shutdown request
+    ///
+    /// A shutdown request is a yaml document with the the key "machine_id"
+    /// and the value from /etc/machine-id. The request must be signed with
+    /// the SeaBee root key. It is recommended to remove
+    /// any signed shutdown requests after they have been used to prevent
+    /// an attacker from maliciously replaying those requests.
+    Shutdown(SignedRequestInfo),
 }
 
 /// Info needed to add, update, or remove a policy or key
@@ -154,6 +162,9 @@ impl std::fmt::Display for SocketCommand {
             }
             SocketCommand::RemoveKey(key_info) => {
                 write!(f, "Remove Key: {}", key_info.target_path.display())
+            }
+            SocketCommand::Shutdown(shutdown_info) => {
+                write!(f, "Shutdown: {}", shutdown_info.target_path.display())
             }
         }
     }

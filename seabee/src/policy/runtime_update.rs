@@ -415,7 +415,7 @@ impl super::SeaBeePolicy {
             )
         })?;
         let expected = MACHINE_ID.get().unwrap();
-        let got = &shutdown_file.machine_id;
+        let got = &shutdown_file.machine_id.trim();
         if got != expected {
             let err_string = format!(
                 "Failed shutdown request from {}. Expected id: '{expected}' got: '{got}'",

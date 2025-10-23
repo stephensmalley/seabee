@@ -22,7 +22,7 @@ Should work out of the box
 
 ## Ubuntu 22.04, 24.04
 
-As of Ubuntu 24.04, Ubuntu has the Kconfig option `CONFIG_BPF_LSM`, but it does not enable BPF LSM by default.
+As of Ubuntu 24.04, Ubuntu has the kernel config option `CONFIG_BPF_LSM`, but it does not enable BPF LSM by default.
 We must enable it in order for this code to work.
 
 ```bash
@@ -43,5 +43,5 @@ sudo cat /sys/kernel/security/lsm
 
 ## Other Distributions
 
-If you have tested SeaBee on another distribtion/environment, and have instructions for how you did it,
+If you have tested SeaBee on another distribution/environment, and have instructions for how you did it,
 please create a PR so we can add those steps to our documentation and benefit anyone who wants to use SeaBee!

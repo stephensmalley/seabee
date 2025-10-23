@@ -28,7 +28,7 @@ Troubleshooting
 * `make: cargo: No such file or directory`
   * you forgot to `source ~/.bashrc`
 * Build errors or missing dependencies
-  * something probably went wrong in the intall script. Try re-running the install script
+  * something probably went wrong in the install script. Try re-running the install script
 * [Full Troubleshooting Docs](./troubleshooting.md)
 
 If errors persist, make an issue on our GitHub.
@@ -47,7 +47,7 @@ Read more here: [Cryptography in SeaBee](./crypto.md)
 
 The following commands require openssl installed on the system, the best way to do that is with your package manager (`apt` or `dnf`)
 
-* Use `make gen-root-key` to generate an encrypted RSA keypair for SeaBee
+* Use `make gen-root-key` to generate an encrypted RSA key pair for SeaBee
   * In production, it would be better to store the root private key on a separate secure system
   * if you are only using SeaBee experimentally, use `make gen-root-key-ci` to generate an unencrypted root key
 * Use `make install-root-key` to copy the resulting public key to `/etc/seabee/seabee_root_key.pem`
@@ -68,10 +68,10 @@ If not, please create one!
 
 * make sure you've compiled: `make all`
 * `sudo target/debug/seabee -s allow`
-* You should get an "Error reading from keylist" since you haven't added any keys yet!
+* You should get an `Error reading from keylist` since you haven't added any keys yet!
 
 we highly recommend running with options during testing/experimentation to prevent needing to reboot the machine in order to stop the program.
-This may occur because the program is designed to be difficult to remove, even in the prescense of a malicious superuser.
+This may occur because the program is designed to be difficult to remove, even in the presence of a malicious superuser.
 
 * `-s allow` allow killing the program with ctrl+c (sigint)
 * `-p allow` allows removing the pinned programs from the bpf filesystem which effectively stops the program.

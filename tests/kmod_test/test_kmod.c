@@ -45,10 +45,10 @@ static char *execute_cmd(char *cmd)
 	if (strncmp(cmd, CMD_REQUEST_MODULE, strlen(CMD_REQUEST_MODULE)) == 0) {
 		int err = request_module("a fake module");
 		if (err == -1) {
-			printk(KERN_ERR "Requst module permission denied: %d\n", err);
+			printk(KERN_ERR "Request module permission denied: %d\n", err);
 			reply = RESPONSE_DENIED;
 		} else if (err) {
-			printk(KERN_ERR "Requst module failed: %d\n", err);
+			printk(KERN_ERR "Request module failed: %d\n", err);
 			reply = RESPONSE_ERROR;
 		} else {
 			reply = RESPONSE_OK;

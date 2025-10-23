@@ -21,7 +21,7 @@ impl super::SeaBeePolicy {
         Ok(unused_id)
     }
 
-    // Verifys a new policy and sets new_policy.key_id
+    // Verify a new policy and set new_policy.key_id
     // O(n) where n is the number of keys
     pub fn verify_new_policy(
         &self,

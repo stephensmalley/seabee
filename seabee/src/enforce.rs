@@ -121,7 +121,7 @@ fn edit_seabee_skel<'a>(
     Ok(Box::new(open_skel.load()?))
 }
 
-/// Used to prevent some eBPF programs from loading if they are unecessary based on the config.
+/// Used to prevent some eBPF programs from loading if they are unnecessary based on the config.
 /// This is a performance optimization.
 fn generate_prog_filter(config: &Config) -> HashSet<String> {
     let mut filtered_progs = HashSet::new();

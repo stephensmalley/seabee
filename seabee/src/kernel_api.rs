@@ -130,7 +130,7 @@ pub fn label_file_with_id(sb_maps: &SeaBeeMapHandles, path: &Path, id: u32) -> R
     Ok(())
 }
 
-/// Unlabel a given file
+/// remove label on a given file
 pub fn unlabel_file(sb_maps: &SeaBeeMapHandles, file: &PathBuf) -> Result<()> {
     debug!("unlabel file {}", file.display());
     let mut open_object = MaybeUninit::uninit();

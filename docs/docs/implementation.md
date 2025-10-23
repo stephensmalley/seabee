@@ -7,6 +7,18 @@ The BPF-to-Rust-skeleton compilation uses the name of the `.bpf.c` file
 `my_bpf_program.bpf.c` will be converted into `mod MyBpfProgram;`
   and `MyBpfProgramSkelBuilder` and other `MyBpfProgram...` prefixes.
 
+## Adding new hooks
+
+When adding new LSM hooks, you have to be careful because the semantics of LSM hooks can change
+between kernel versions. Although changes are uncommon, they do happen. Make sure the test your
+code on all kernel versions when adding new hooks.
+
+If a hook changes between kernel versions, then you need to define two versions of the hook and
+determine which one to use at compile time. While there are some advantages to compiling multiple
+versions and choosing the correct version at runtime. This approach ran into other difficulties.
+This means that currently SeaBee must be compiled for the specific kernel version it is going to
+run on. For more information on this decision, see [issue #9](https://github.com/NationalSecurityAgency/seabee/issues/9)
+
 ## Logging
 
 So you've written up a new BPF program, that's great!
@@ -27,7 +39,7 @@ Don't worry though, it'll look great when we're done!
    At a minimum, it should contain the info used to make the access control decision.
 1. Create a logging function in `bpf/src/seabee_enforce/self_enforce_log.h`.
    Follow the pattern of the other functions already present.
-   Instantiate the struct from step 2 and send it to the ringbuffer.
+   Instantiate the struct from step 2 and send it to the ring buffer.
    Use the `log_type` defined in the first step to aid the C-to-Rust translation.
 1. Replace `bpf_printk` calls with the new log function.
    Choose a `reason` and a `level` for each call.
@@ -41,13 +53,13 @@ Don't worry though, it'll look great when we're done!
      code may need to be restructured.
 1. Add the struct to the `get_log_struct` function in `bpf/src/logging/mod.rs`.
    Following the pattern of other logs,
-     add a case to the match statment and include the new `log_type` enum value and log struct.
+     add a case to the match statement and include the new `log_type` enum value and log struct.
    The `ToString` trait must also be implemented to print the log.
    Follow the pattern of other structs in the file.
    Note: The name of the struct and `log_type` need to match in Rust and C,
       otherwise it will fail to compile.
 
-### Logging for a new Skel
+### Logging for a new eBPF Skeleton
 
 Note: SeaBee no longer uses multiple skeletons
 

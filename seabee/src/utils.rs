@@ -9,7 +9,7 @@ use anyhow::{anyhow, Result};
 use nix::sys::signal::Signal;
 use tracing::{error, trace};
 
-use crate::{cli::SecurityLevel, constants};
+use crate::constants;
 
 /// Ensure the system has all requirements for running ebpf security
 pub fn verify_requirements() -> Result<()> {
@@ -128,7 +128,7 @@ pub fn fill_buff_with_str(buf: &mut [u8], buf_size: usize, string: &str) -> Resu
 
 /// Generates a [mask](https://en.wikipedia.org/wiki/Mask_(computing))
 /// of allowed signals
-pub const fn generate_sigmask(sigint: SecurityLevel) -> u64 {
+pub const fn generate_sigmask(sigint: bool) -> u64 {
     let mut sigmask: u64 = 0;
     // These signals are those that do not terminate a process by default
     sigmask |= 1 << (Signal::SIGCHLD as u64 - 1);
@@ -136,14 +136,10 @@ pub const fn generate_sigmask(sigint: SecurityLevel) -> u64 {
     sigmask |= 1 << (Signal::SIGURG as u64 - 1);
     sigmask |= 1 << (Signal::SIGWINCH as u64 - 1);
 
-    if is_sigint_allowed(sigint) {
+    if sigint {
         sigmask |= 1 << (Signal::SIGINT as u64 - 1);
     }
     sigmask
-}
-
-pub const fn is_sigint_allowed(sigint: SecurityLevel) -> bool {
-    matches!(sigint, SecurityLevel::allow | SecurityLevel::audit)
 }
 
 pub fn create_dir_if_not_exists(dir: &str) -> Result<()> {

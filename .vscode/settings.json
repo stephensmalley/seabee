@@ -1,12 +1,70 @@
 {
-	"[c]": {
+    "[c]": {
         "editor.defaultFormatter": "ms-vscode.cpptools"
     },
     "C_Cpp.autoAddFileAssociations": false,
-	"files.watcherExclude": {
-		"**/.git/objects/**": true,
-		"**/.git/subtree-cache/**": true,
-		"**/.cargo/**": true
+    "files.watcherExclude": {
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+        "**/.cargo/**": true
     },
     "rust-analyzer.cargo.targetDir": true,
+    "cSpell.ignorePaths": [
+        "**/*.toml"
+    ],
+    "cSpell.languageSettings": [
+        {
+            "languageId": "markdown",
+            "ignoreRegExpList": [
+                "`.*?`",
+                "```[\\s\\S]*?```"
+            ]
+        },
+        {
+            "languageId": "rust",
+            "includeRegExpList": [
+                "(?://+!?.*$)|(?:/\\*[\\s\\S]*?\\*/)"
+            ]
+        }
+    ],
+    "cSpell.words": [
+        "bindgen",
+        "bpftool",
+        "distro",
+        "Dockerfiles",
+        "Doxygen",
+        "ebpf",
+        "EOPNOTSUPP",
+        "FIPS",
+        "karmor",
+        "keylist",
+        "kmod",
+        "kubearmor",
+        "libbpf",
+        "libtest",
+        "nationalsecurityagency",
+        "NLMSG",
+        "nlmsghdr",
+        "Pkey",
+        "prctl",
+        "printk",
+        "ptrace",
+        "RAII",
+        "ringbuf",
+        "rustdoc",
+        "seccomp",
+        "setattr",
+        "Sigmask",
+        "skel",
+        "struct",
+        "structs",
+        "subdir",
+        "syscall",
+        "syscalls",
+        "tempdir",
+        "uprobe",
+        "userspace",
+        "vmlinux",
+        "walkdir"
+    ],
 }

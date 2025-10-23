@@ -3,5 +3,5 @@ Description=SeaBee Service
 
 [Service]
 Type=exec
-ExecStart=/usr/sbin/seabee --sigint allow --log-level debug
+ExecStart=/usr/sbin/seabee --sigint true --log-level debug
 KillSignal=SIGINT

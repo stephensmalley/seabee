@@ -10,7 +10,7 @@ This guide explains the thoughts and considerations behind why the CI/CD
 
 This is primarily provided by [MegaLinter](https://megalinter.io).
 
-Rust's [clippy](https://github.com/rust-lang/rust-clippy) is supported by MegaLinter,
+Rust's [`clippy`](https://github.com/rust-lang/rust-clippy) is supported by MegaLinter,
   but the current project requires system dependencies in order to compile
   the eBPF bytecode to embed inside the Rust code (see `build.rs`).
 This requires using a separate VM or container which has these dependencies.
@@ -38,7 +38,7 @@ It is generally not recommended to allow GitLab CI jobs to change the state of t
   underlying system that is running the GitLab Runner process.
 As a result,
   Docker or Kubernetes is often used to run the job in a containerized environment.
-However, official Docker container providers (Ubuntu, Fendora, etc.) do not have the
+However, official Docker container providers (Ubuntu, Fedora, etc.) do not have the
   project's system dependencies installed and have to be installed on each run.
 In order to not incur this overhead, a custom container image can be created.
 In our case, a custom Dockerfile can be used.

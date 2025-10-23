@@ -4,7 +4,7 @@ version: 1
 scope:
   - /doesnt/matter
 files:
-  - /etc/seabee_test_tool #overwrite test-tool-policy
+  - /etc/seabee_test_tool # overwrite test-tool-policy
 config:
   map_access: audit
   file_write_access: audit

@@ -45,7 +45,7 @@ python_check() {
     pipx install --force poetry==$POETRY_VERSION
     pipx ensurepath
     # shellcheck disable=SC1091
-    source "$HOME/.bashrc" && poetry completions bash >>~/.bash_completion
+    source "$HOME/.profile" && poetry completions bash >>~/.bash_completion
   fi
   if [ "$DOCKER" -eq 0 ] && ! command -v "$ASCIINEMA" &>/dev/null || ! version_greater_equal "$($ASCIINEMA --version | cut -d" " -f2)" $ASCIINEMA_VERSION; then
     printf "Compatible version of Asciinema not detected\n"
@@ -53,7 +53,7 @@ python_check() {
     pipx ensurepath
   fi
   # shellcheck disable=SC1091
-  source "$HOME/.bashrc" && poetry install
+  source "$HOME/.profile" && poetry install
 }
 
 # install the latest stable verison of rust

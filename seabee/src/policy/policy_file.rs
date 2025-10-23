@@ -48,7 +48,7 @@ impl Default for PolicyConfig {
             ptrace_access: SecurityLevel::block,
             signal_access: SecurityLevel::block,
             // generate a sigmask for all signals that can kill a process
-            signal_allow_mask: utils::generate_sigmask(SecurityLevel::block),
+            signal_allow_mask: utils::generate_sigmask(false),
         }
     }
 }
@@ -72,7 +72,7 @@ impl PolicyConfig {
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct PolicyFile {
-    /// Uniquely idenfies a policy file and corresponds to name
+    /// Uniquely identifies a policy file and corresponds to name
     #[serde(skip, default = "default_policy_id")]
     pub id: u32,
     // Stores the path to the policy in the seabee policy directory

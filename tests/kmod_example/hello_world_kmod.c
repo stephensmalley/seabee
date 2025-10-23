@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 /*
  * Source from https://tldp.org/LDP/lkmpg/2.6/html/x121.html
- * that will be used for testingbasic monitoring of the
+ * that will be used for testing basic monitoring of the
  * finit_module code for kmod_monitor BPF program.
  */
 #include <linux/module.h> /* Needed by all modules */

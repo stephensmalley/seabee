@@ -1,0 +1,12 @@
+---
+name: kubearmor-systemd
+version: 1
+scope:
+  - /opt/kubearmor/kubearmor
+  - /usr/local/bin/karmor
+files:
+  - /opt/kubearmor
+config:
+  signal_access: audit
+  signal_allow_mask: 0
+  # other options remain as default

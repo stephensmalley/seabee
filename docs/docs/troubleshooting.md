@@ -15,8 +15,8 @@ Try running `make udpate` again
 
 ### bpftool not found
 
-The following error occurs with how bpftool is installed on ubuntu.
-bpftool needs to match the underlying kernel version.
+The following error occurs with how `bpftool` is installed on ubuntu.
+`bpftool` needs to match the underlying kernel version.
 If you recently ran `apt upgrade` or `make update`, you may have installed
 a new kernel version. You should reboot into that new kernel and recompile
 SeaBee for the newer kernel.

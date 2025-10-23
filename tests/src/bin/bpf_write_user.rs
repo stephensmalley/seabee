@@ -21,7 +21,7 @@ fn main() -> Result<()> {
     }
     let mut skel = load_result?;
 
-    // check if load succees
+    // check if load success
 
     // Taken from libbpf_rs tests: https://github.com/libbpf/libbpf-rs/blob/master/libbpf-rs/tests/test.rs
     // Attach program with opts

@@ -39,7 +39,7 @@ Don't worry though, it'll look great when we're done!
    At a minimum, it should contain the info used to make the access control decision.
 1. Create a logging function in `bpf/src/seabee_enforce/self_enforce_log.h`.
    Follow the pattern of the other functions already present.
-   Instantiate the struct from step 2 and send it to the ringbuffer.
+   Instantiate the struct from step 2 and send it to the ring buffer.
    Use the `log_type` defined in the first step to aid the C-to-Rust translation.
 1. Replace `bpf_printk` calls with the new log function.
    Choose a `reason` and a `level` for each call.
@@ -53,13 +53,13 @@ Don't worry though, it'll look great when we're done!
      code may need to be restructured.
 1. Add the struct to the `get_log_struct` function in `bpf/src/logging/mod.rs`.
    Following the pattern of other logs,
-     add a case to the match statment and include the new `log_type` enum value and log struct.
+     add a case to the match statement and include the new `log_type` enum value and log struct.
    The `ToString` trait must also be implemented to print the log.
    Follow the pattern of other structs in the file.
    Note: The name of the struct and `log_type` need to match in Rust and C,
       otherwise it will fail to compile.
 
-### Logging for a new Skel
+### Logging for a new eBPF Skeleton
 
 Note: SeaBee no longer uses multiple skeletons
 

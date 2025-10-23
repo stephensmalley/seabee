@@ -31,7 +31,7 @@ pub struct SeaBeeKey {
     pub sig_path: PathBuf,
     /// The digest used to sign this key
     pub sig_digest: SeaBeeDigest,
-    /// The key itself, see openssl::pkey::Pkey
+    /// The key itself, see `openssl::pkey::Pkey`
     pub key: PKey<Public>,
     /// The id used to identify this key
     pub id: u32,
@@ -297,7 +297,7 @@ pub fn verify_policy_signature_cli(info: &VerifyInfoCLI) -> Result<String> {
     }
 }
 
-/// verify a file given a signature, digest algorithm, and keylist
+/// verify a file given a signature, digest algorithm, and key list
 pub fn verify_file_signature(
     target_path: &Path,
     sig_path: &Path,

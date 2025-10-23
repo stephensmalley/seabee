@@ -20,8 +20,8 @@ This document exists as a way to track what the userspace program does
 
 * Multiple eBPF programs on the same LSM hook cannot override a "deny" result
 * Blocking eBPF pinned map access because the userspace's maps aren't pinned
-* ptrace through `security_ptrace_traceme` is out of scope
-  since it is only invoked by a tracee and the userspace is not one
+* ptrace through `security_ptrace_traceme` is out of scope since it is only invoked
+by the process requesting to be traced and the SeaBee userspace is not doing that
 * The `bpf_send_signal` helper can only signal the `current` task
 * uprobe attaching to the userspace process is not a concern as long as `bpf_probe_write_user` is blocked
 

@@ -1,4 +1,4 @@
-# Testing Philosphy
+# Testing Philosophy
 
 ## Attack Surface
 
@@ -45,7 +45,7 @@ cargo test --test integration_test -- --skip <filter>
 
 Located under `tests/src/suite.rs`
 
-This trait has been developed to closely mimic how Pytest fixtures work.
+This trait has been developed to closely mimic how `pytest` fixtures work.
 All tests should try to use the `TestSuite` structure when possible as it
   has the infrastructure necessary to provide shared state between tests
   via its `get_args()` function.

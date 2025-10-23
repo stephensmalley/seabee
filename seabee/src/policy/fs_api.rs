@@ -74,8 +74,7 @@ pub fn generate_policy_from_yaml(yaml_path: &PathBuf) -> Result<PolicyFile> {
     // validate files
     for file in &new_policy.files {
         if !Path::new(file).exists() {
-            return Err(anyhow!("File {} does not exist.\nOptions are: create the file and try again, protect the directory in which this file resides,
-            or use 'seabeectl update' to change the policy and add the file after it has been created.", file.display()));
+            return Err(anyhow!("File {} does not exist.\nOptions are: create the file and try again, protect the directory in which this file resides, or use 'seabeectl update' to change the policy and add the file after it has been created.", file.display()));
         }
     }
 

@@ -4,7 +4,6 @@ version: 2
 scope:
   - /this/file/does/not/exist
 files:
-  - /etc/test_seabee_policy
   - /etc/seabee/keylist.yaml
 config:
   map_access: allow

@@ -1,89 +1,123 @@
 # SeaBee Policy
 
-## Security Framework
+This document is intended to provide an overview and in-depth explanations
+of how SeaBee policies work.
 
-- SeaBee provides isolation between eBPF applications via policy.
+## Policy Overview
+
+- SeaBee provides isolation for eBPF applications via policy
 - Policy is defined for an executable or a set of executables (the policy scope)
-- SeaBee detects when protected objects are created by a process in the policy
+- SeaBee detects when protected objects (e.g. eBPF maps) are created by a process in the policy
 scope and assigns them with the corresponding policy ID including the process itself
 - Any executable or process will have access to all protected objects with the same
 Policy ID as itself, which indicates that it falls within the same scope.
 - A SeaBee policy for an executable must be loaded before that executable starts in order
-for SeaBee to associate the exe path with the created process and protect eBPF
+for SeaBee to associate the path of the executable with the created process and protect eBPF
 objects for that process. When run as a systemd daemon(strongly recommended), SeaBee
-must still start before other daemon applications during boot. If an application using
-SeaBee starts early during boot, it must ensure that it starts after SeaBee
+must start before other daemon applications during boot in order to protect them.
+If an application using SeaBee starts early during boot, it must ensure that it starts after SeaBee
 (or add SeaBee as a dependency).
+
+![without SeaBee diagram shows no isolation for eBPF security tools](./assets/images/diagrams/without-seabee.png)
+
+![with SeaBee diagram shows isolation](./assets/images/diagrams/with-seabee.png)
 
 ## Definitions
 
 - Protected Object: anything that SeaBee protects including: processes, eBPF maps, pinned
-programs, or specific files.
+programs, files, and directories.
 - Policy ID: Each policy is assigned a Policy ID. The Policy ID is used to identify
 protected objects associated with the same policy. All objects in the same policy have
 the same Policy ID.
-- Action: actions are defined in the policy config. The action determines how a process
-not governed by the policy should be allowed to interact with a particular protected object.
-The action can be different for each protected object. For example: "maps: audit" would audit,
+- Action: SeaBee supports three actions: allow, audit, and block.
+Actions are defined in the policy config.
+Actions determine how external processes can interact with protected objects under a policy.
+The action can be different for each protected object.
+For example: "map_access: audit" would audit,
 but allow any external process to access a map that is within the policy scope.
-- Policy Config: A list of actions. The policy config determines how processes not governed by
-the policy scope can access protected objects within the policy scope. It assigns an Action for
-each protected object indicating how the external access should be handled.
 
-## Policy Expressiveness
+## Sample Policy
 
-Think of a SeaBee policy as a list of "deny" or "audit" rules. By default, everything is allowed
-(this is the 'policy' if SeaBee is not being used). When a file path for an executable is listed
-under the "scope" for a SeaBee policy, the corresponding process is allowed to access any
-protected object it creates. The Policy Config determines how every other process not in policy
-scope is allowed to access those protected objects within the policy scope.
+Here is a sample annotated SeaBee policy. The rest of this document will walk through each part of the policy.
+At the end, there is a discussion of the limitations of SeaBee policies.
 
-When answering "Is some process allowed to access some object?", SeaBee considers two things:
+More example policies can be seen at `tests/policies`
 
-1. Does the process have the same Policy ID (scope) as the object?
-1. If not, does the policy config for the object's policy have an 'audit' or 'allow' action?
-Since these actions grant access to an external process.
-
-Actions in the Policy Config are only granular to the class of protected object not to each
-particular object. This means that you cannot have one map that is 'audit' and a different map
-that is 'block' for the same policy scope/executable.
-
-## Example Use Case
-
-- A can access all of its objects and none of B's objects.
-- B can access all of its objects and none of A's objects.
-
-for testing/debugging, an action could be changed to 'audit' or bpftool could be added to the policy scope
+```yaml
+# names must be unique
+name: sample-policy
+# version should be incremented on policy update
+version: 1
+scope:
+  # this executable and all processes it creates are in scope
+  - /usr/sbin/my-ebpf-tool
+files:
+  # all files created in this folder will be protected according to the "file_write_access" rule
+  - /etc/my-ebpf-tool/
+config:
+  # block external access to maps created by a process in scope
+  map_access: block
+  # block external access to files listed in "files:"
+  file_write_access: block
+  # block access to eBPF pins in addition to "files:"
+  include_pins: true
+  # audit, but allow signals not specified in allow_mask
+  signals: audit
+  # since no signals are specified, all signals will be audited or blocked
+  signal_allow_mask: 0x0
+  # any options not included in config will be left to a secure default, usually blocking
+```
 
 ## Policy Anatomy
 
-a policy is a yaml file and has the following keys
+This section gives a more detailed overview of each part of a policy.
 
 ### Name
 
-The name of the policy
+The name of the policy is used to uniquely identify a policy.
+If you try to add a policy with the same name as an existing policy,
+SeaBee will interpret it as an attempt to update the existing policy.
+This will mostly likely result in an error, or overwriting the old
+policy if your new policy uses the same key and a higher version number.
 
 ### Version
 
-The version should be incremented when a policy is updated. The version ensures
-that an attacker cannot downgrade the policy to an old version or maliciously update
-a policy.
+The version should be incremented when a policy is updated.
+The version ensures that an attacker cannot downgrade the policy to an old version
+or maliciously update a policy.
 
 ### Scope
 
-- a file path, determines which binaries the policy applies to
+A list of paths to executables. These paths are used to determine what is
+protected by a SeaBee policy. All child process will be in scope.
+All eBPF maps or pins are in scope as well. Files created in a
+protected directory are in scope as well as files or directories
+specified in the policy.
+
+If paths are scopes are symbolic links to binaries, it will not work correctly.
+Seabee will not follow symbolic links.
+This is an open issue and can be see at [Issue 12](https://github.com/NationalSecurityAgency/seabee/issues/12).
+
+SeaBee implements a scope by storing the policy ID for each protected object.
+Currently each object can only have one policy ID assigned to it.
+This limits policy flexibility since two different policies cannot have overlapping scopes.
+This is being addressed in [issue 34](https://github.com/NationalSecurityAgency/seabee/issues/34).
+Assigning a policy ID to an object is sometimes referred to as
+"Labeling". The following diagram shows the basic runtime labeling rules for SeaBee.
+
+![SeaBee Labeling Rules](./assets/images/diagrams/seabee-labeling.png)
 
 ### Files
 
 This section determines which files are protected by the policy.
 It may be the case that there are repeated files between `scope` and `files`.
 This would be the case if you wanted to prevent an executable from being modified
-and allow a process created by that executable permissions to access other objects in the policy.
+_and_ have that executable and its children in scope.
 
 The paths listed in this section can include directories, files, and some other types of linux directory entries.
 For each entry SeaBee will attempt to label the underlying inode.
 These labels are used to enforce security controls. If the entry is a directory,
-SeaBee uses the [walkdir crate](https://docs.rs/walkdir/latest/walkdir/) to recursively iterate through
+SeaBee uses the [`walkdir`](https://docs.rs/walkdir/latest/walkdir/) crate to recursively iterate through
 all subdirectories and label everything in those directories as well.
 This directory walk will not follow symlinks.
 
@@ -96,37 +130,31 @@ on our GitHub letting us know: [Issue 35](https://github.com/NationalSecurityAge
 
 ### Config
 
-The policy config determines what protections this policy provides within the `scope`.
+The policy config determines what protections this policy provides to processes and objects created within the `scope`.
+If an option is not specified in the policy it will default to block,
+unless otherwise specified.
 
 config has the following keys:
 
-- map_access: control access to eBPF maps within the scope (allow, audit, default = block)
-- file_write_access: control write access to the files listed in `files` section (allow, audit, block)
-- include_pins: should eBPF pins be protected in addition to `files`? If true, all eBPF pins created within
+- `map_access`: control access to eBPF maps within the scope (allow, audit, block)
+- `file_write_access`: control write access to the files listed in `files` section (allow, audit, block)
+- `include_pins`: should eBPF pins be protected in addition to `files`? If true, all eBPF pins created within
 scope will be protected according to the `file_write_access` level (true, false)
-- ptrace_access: control if ptrace can be used on processes in scope (allow, audit, block)
-- signal_access: control how to enforce the sigmask (allow, audit, block)
-- signal_allow_mask: determines which signals should be allowed (see below)
-
-If a key is not specified, the default will be used. Default options prefer more security.
-
-- map_access: block
-- file_write_access: block
-- include_pins: true
-- ptrace_access: block
-- signal_access: block
-- signal_allow_mask: `0x8430000` (see below for details)
+- `ptrace_access`: control if ptrace can be used on processes in scope (allow, audit, block)
+- `signal_access`: control how to enforce the sigmask (allow, audit, block)
+- `signal_allow_mask`: determines which signals should be allowed (see below)
+  - default is `0x8430000` (see below for details)
 
 ### Sigmask
 
-The sigmask requires further explanation. The sigmask allows a user to precisly control which signals are allowed
+The sigmask requires further explanation. The sigmask allows a user to precisely control which signals are allowed
 to be sent to a process within scope. To construct a sigmask, you need to first enumerate the codes for each signal
 you want to allow. For example, if you want to allow SIGINT, you should get code 2.
 
 The sigmask is a `u64` so it covers all possible signals including RT signals 32 through 64.
-The null signal is not part of the standard signal set and there cannot be blocked
+The null signal is not part of the standard signal set and therefore cannot be blocked
 We construct the sigmask by taking the code for each signal we want to block, subtracting 1,
-and flipping that bit to a 1 `(1<<(CODE-1))`. For SIGINT, we do `(1<<1)` and get `0x2`.
+and flipping that bit to a 1 `(1<<(CODE-1))`. For SIGINT, we do `(1<<(2-1))` and get `0x2`.
 
 The `0x2` sigmask will allow SIGINT but block all other signals to the process (if `signals` is set to `block`)
 
@@ -155,21 +183,31 @@ pub const fn generate_sigmask(sigint: SecurityLevel) -> u64 {
 }
 ```
 
-## Examples
+## Policy Flexibility and Limitations
 
-more test policies can be seen at `tests/policies`
+Think of a SeaBee policy as a list of "deny" or "audit" rules. By default, everything is allowed
+(this is the 'policy' if SeaBee is not being used).
+When an executable is listed under the "scope" for a SeaBee policy,
+it is allowed access to all protected object it creates.
+The Policy Config determines how other processes, not in policy
+scope, are allowed to access protected objects within a policy scope.
 
-```yaml
-name: sample-policy
-version: 1
-scope:
-  - ../usr/sbin/my-ebpf-tool
-files:
-  - /etc/my-ebpf-tool/
-config:
-  map_access: block
-  file_write_access: block
-  include_pins: true
-  signals: block
-  signal_allow_mask: 0x8430002
-```
+Here is an example of a process trying to access and eBPF Map with
+SeaBee enabled.
+
+![Example: Accessing an eBPF map](./assets/images/diagrams/seabee-map-access.png)
+
+When answering "Is some process allowed to access some object?", SeaBee considers two things:
+
+1. Does the process have the same Policy ID (scope) as the object?
+1. If not, does the policy config for the object's policy have an 'audit' or 'allow' action?
+Since these actions grant access to an external process.
+
+Actions in the Policy Config are only granular to the class of protected object not to each
+particular object. This means that you cannot have one map that is 'audit' and a different map
+that is 'block' for the same policy scope/executable.
+
+Currently, an executable or a file can only have one SeaBee policy ID.
+This limits what types of policies can be created since you cannot
+have a shared tool defined in multiple policy scopes.
+This may be addressed in the future through [issue 34](github.com/NationalSecurityAgency/seabee/issues/34).

@@ -46,7 +46,7 @@ pub enum LocalCommand {
     Verify(crypto::VerifyInfoCLI),
     /// Remove SeaBee policies and keys.
     ///
-    /// Only works while SeaBee is turned off. Inteded for debugging.
+    /// Only works while SeaBee is turned off. Intended for debugging.
     #[command(subcommand)]
     Clean(CleanCommand),
     /// Control the saved SeaBee Config
@@ -96,7 +96,7 @@ pub enum SocketCommand {
     /// Remove an existing policy with a remove request.
     ///
     /// A remove request is a yaml document with only the target policy name and version.
-    /// A signature must acompany the remove request if verification is enabled.
+    /// A signature must accompany the remove request if verification is enabled.
     Remove(SignedRequestInfo),
     /// List all SeaBee verification keys
     ListKeys,
@@ -112,7 +112,7 @@ pub enum SocketCommand {
     ///
     /// A signature by the target key or the root key.
     /// Removing a key does not immediately revoke policies or other verification keys
-    /// previosuly signed with this key. During reboot, policies and keys will be
+    /// previously signed with this key. During reboot, policies and keys will be
     /// reverified with the new reduced set of keys.
     /// You cannot revoke the root key.
     RemoveKey(SignedRequestInfo),

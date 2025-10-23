@@ -89,10 +89,10 @@ pub fn init_paths() -> Result<()> {
 // Note: if modifying, make sure updates are reflected in cli::Args and its functions
 #[derive(Clone, Debug, PartialEq)]
 pub struct Config {
-    /// Specifiy the minimum log level that should be printed
+    /// Specify the minimum log level that should be printed
     pub log_level: LogLevel,
     /// Can SIGINT(2) be sent to SeaBee?
-    pub sigint: SecurityLevel,
+    pub sigint: bool,
     /// How should SeaBee handle kernel modules?
     pub kmod: SecurityLevel,
     /// Tells how SeaBee should protect itself
@@ -112,7 +112,7 @@ impl Default for Config {
         // The default config is intended to be a secure, but usable configuration
         Self {
             log_level: LogLevel::LOG_LEVEL_INFO,
-            sigint: SecurityLevel::block,
+            sigint: false,
             kmod: SecurityLevel::audit,
             policy_config: Default::default(),
             test: false,
@@ -124,9 +124,9 @@ impl Default for Config {
 }
 
 /// sets up ctrl+c handler based on whether or not SIGINT is allowed
-pub fn setup_ctrlc(sigint: SecurityLevel) -> Result<Arc<AtomicBool>> {
+pub fn setup_ctrlc(sigint: bool) -> Result<Arc<AtomicBool>> {
     let running = Arc::new(AtomicBool::new(true));
-    if crate::utils::is_sigint_allowed(sigint) {
+    if sigint {
         let r = running.clone();
         ctrlc::set_handler(move || {
             r.store(false, Ordering::SeqCst);

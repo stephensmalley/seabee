@@ -71,7 +71,7 @@ fn cleanup_seabee_with_logging(thread_control: ThreadControl) -> Result<()> {
 fn functional_tests(args: &Arguments, log_level: LogLevel) -> Result<(), Failed> {
     let mut config = Config {
         // to allow an errant test to be stopped
-        sigint: SecurityLevel::allow,
+        sigint: true,
         // to allow other processes like bpftool to run
         test: true,
         log_level,
@@ -101,7 +101,7 @@ fn security_tests(args: &Arguments, log_level: LogLevel) -> Result<(), Failed> {
         // don't allow kernel modules to be loaded
         kmod: SecurityLevel::block,
         // to allow an errant test to be stopped
-        sigint: SecurityLevel::allow,
+        sigint: true,
         // to allow other processes like kill and bpftool to run
         test: true,
         log_level,

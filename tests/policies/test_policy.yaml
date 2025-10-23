@@ -4,7 +4,6 @@ version: 1
 scope:
   - /this/file/does/not/exist
 files:
-  - /etc/test_seabee_policy
 config:
   map_access: audit
   file_write_access: block

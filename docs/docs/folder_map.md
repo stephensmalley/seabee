@@ -22,6 +22,10 @@ See its [documentation](ci.md) for more info.
 
 Contains a majority of the high-level documentation for the project.
 
+## `sample_policy`
+
+Contains SeaBee policy examples.
+
 ## `scripts`
 
 Contains all of the shell scripts used for installation and configuring.

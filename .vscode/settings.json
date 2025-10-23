@@ -1,12 +1,69 @@
 {
-	"[c]": {
+    "[c]": {
         "editor.defaultFormatter": "ms-vscode.cpptools"
     },
     "C_Cpp.autoAddFileAssociations": false,
-	"files.watcherExclude": {
-		"**/.git/objects/**": true,
-		"**/.git/subtree-cache/**": true,
-		"**/.cargo/**": true
+    "files.watcherExclude": {
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+        "**/.cargo/**": true
     },
     "rust-analyzer.cargo.targetDir": true,
+    "cSpell.ignorePaths": [
+        "**/*.toml" // ignore toml files
+    ],
+    "cSpell.languageSettings": [
+        {
+            "languageId": "markdown",
+            "ignoreRegExpList": [
+                "`.*?`", // ignore inline code like `kubectl create`
+                "```[\\s\\S]*?```" // ignore fenced code blocks like ```bash ... ```
+            ]
+        },
+        {
+            "languageId": "rust",
+            // Only check text inside Rust comments
+            "includeRegExpList": [
+                "(?://+!?.*$)|(?:/\\*[\\s\\S]*?\\*/)"
+            ]
+        }
+    ],
+    "cSpell.words": [
+        "bpftool",
+        "distro",
+        "Dockerfiles",
+        "Doxygen",
+        "ebpf",
+        "EOPNOTSUPP",
+        "FIPS",
+        "karmor",
+        "keylist",
+        "kmod",
+        "kubearmor",
+        "libbpf",
+        "libtest",
+        "nationalsecurityagency",
+        "NLMSG",
+        "nlmsghdr",
+        "Pkey",
+        "prctl",
+        "printk",
+        "ptrace",
+        "RAII",
+        "ringbuf",
+        "seccomp",
+        "setattr",
+        "Sigmask",
+        "skel",
+        "struct",
+        "structs",
+        "subdir",
+        "syscall",
+        "syscalls",
+        "tempdir",
+        "uprobe",
+        "userspace",
+        "vmlinux",
+        "walkdir"
+    ],
 }

@@ -3,7 +3,7 @@
 /// Module to check the security of signal protections
 use libtest_mimic::{Failed, Trial};
 
-use seabee::utils::{generate_sigmask, is_sigint_allowed};
+use seabee::utils::generate_sigmask;
 
 use crate::{create_test, suite::TestSuite, test_utils};
 
@@ -27,7 +27,7 @@ fn security_signal_check_sigmask() -> Result<(), Failed> {
 
     for signal in 1..=libc::SIGRTMAX() {
         // SIGINT is reserved as a 'backdoor' for test purposes
-        if signal == libc::SIGINT && is_sigint_allowed(config.sigint) {
+        if signal == libc::SIGINT && config.sigint {
             continue;
         }
         // if the signal is allowed skip it

@@ -2,7 +2,7 @@
 
 /// Module to check the security of pin protections
 ///
-/// # Intentionally unincluded Tests
+/// # Intentionally not included Tests
 ///
 /// - BPF_LINK_DETACH on our pinned programs returns -EOPNOTSUPP with bpftool.
 ///

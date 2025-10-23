@@ -31,7 +31,7 @@ fn main() -> Result<()> {
         r.store(false, Ordering::SeqCst);
     })?;
 
-    // setup ringbuffer
+    // setup ringbuf
     let mut rbb = libbpf_rs::RingBufferBuilder::new();
     rbb.add(&skel.maps.ringbuf, rb_callback)?;
     let ringbuf = rbb.build()?;

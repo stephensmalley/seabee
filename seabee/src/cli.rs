@@ -17,18 +17,18 @@ impl Default for Args {
             config: None,
             // Log Level Info
             log_level: Some(LogLevelArg::info),
-            // Enable map protection
-            map_modification: Some(SecurityLevel::block),
-            // Enable pin protection for SeaBee
+            // Block access to SeaBee maps
+            map_access: Some(SecurityLevel::block),
+            // Block access to SeaBee pins
             include_pins: Some(true),
             // sigint is not allowed
-            sigint: Some(SecurityLevel::block),
-            // kernel modules are allowed
+            sigint: Some(false),
+            // kernel modules are audited
             kmod: Some(SecurityLevel::audit),
-            // daemon modification is not allowed
-            daemon_modification: Some(SecurityLevel::block),
+            // block write access to SeaBee files
+            file_write_access: Some(SecurityLevel::block),
             // ptrace is not allowed
-            ptrace: Some(SecurityLevel::block),
+            ptrace_access: Some(SecurityLevel::block),
             // nothing is excluded
             exclude: Vec::new(),
             // digital signature verification is enabled
@@ -53,7 +53,7 @@ pub fn args_from_cli() -> Result<Args> {
 
 /// Get config info from a config file
 ///
-/// <div class="warning">This funciton does not check if the file exists</div>
+/// <div class="warning">This function does not check if the file exists</div>
 pub fn args_from_file(config_path: &str) -> Result<Args> {
     let config_str = std::fs::read_to_string(config_path)
         .map_err(|e| anyhow!("Failed to read file: {config_path}\n{e}"))?;
@@ -78,47 +78,38 @@ pub struct Args {
     /// Absolute or relative path to a config file
     #[arg(short, long)]
     config: Option<String>,
-
     /// Select the granularity of logs
     #[arg(short, long)]
     log_level: Option<LogLevelArg>,
-
-    /// Select map security level
+    /// Security level for SeaBee map access
     #[arg(short, long)]
-    map_modification: Option<SecurityLevel>,
-
-    /// Should the file_write_access security level apply to eBPF pins in addition to files?
+    map_access: Option<SecurityLevel>,
+    /// Should the file_write_access security level apply to eBPF pins
+    /// created by SeaBee?
     #[arg(short('p'), long)]
     include_pins: Option<bool>,
-
-    /// Is `kill -SIGINT <pid>` allowed to kill userspace process?
+    /// Can signal 2 (SIGINT) be sent to SeaBee userspace?
     #[arg(short, long)]
-    sigint: Option<SecurityLevel>,
-
+    sigint: Option<bool>,
     /// Are kernel modules allowed to be loaded?
     #[arg(long)]
     kmod: Option<SecurityLevel>,
-
-    /// Protection level for modification of daemon service, config, and executable files
+    /// Security level for file write access to SeaBee configuration and policy files
     #[arg(short, long)]
-    daemon_modification: Option<SecurityLevel>,
-
-    /// Whether or not ptrace can be used on seabee. Use this option to run seabee under GDB.
-    /// Note that PTRACE_ATTACH will cause seabee to exit gracefully while PTRACE_SEIZE will allow
+    file_write_access: Option<SecurityLevel>,
+    /// Security level for using ptrace on seabee userspace.
+    /// If allowed, PTRACE_ATTACH will cause seabee to exit gracefully while PTRACE_SEIZE will allow
     /// seabee to continue running.
     #[arg(short('t'), long)]
-    ptrace: Option<SecurityLevel>,
-
-    // A list of LogTypes to exclude from output
+    ptrace_access: Option<SecurityLevel>,
+    /// A space-separated list of log types to exclude from output. Example: "-e ptrace signal"
     #[arg(short, long, value_delimiter = ' ', num_args = 0..)]
     #[serde(default)]
     exclude: Vec<LogTypeCLI>,
-
     /// Whether or not digital signature verification for policy updates is enabled. This option is enabled
     /// by default and disabling it eliminates all security benefits SeaBee provides. Only for debugging.
     #[arg(short, long)]
     verify_policy: Option<bool>,
-
     /// Whether or not digital signature verification for new keys is enabled. This option is
     /// disabled by default. Enabling allows an administrator to authorize who can create SeaBee
     /// policies by controlling who can add keys.
@@ -134,8 +125,8 @@ impl Args {
         if other.log_level.is_some() {
             self.log_level = other.log_level;
         }
-        if other.map_modification.is_some() {
-            self.map_modification = other.map_modification;
+        if other.map_access.is_some() {
+            self.map_access = other.map_access;
         }
         if other.include_pins.is_some() {
             self.include_pins = other.include_pins;
@@ -143,14 +134,14 @@ impl Args {
         if other.sigint.is_some() {
             self.sigint = other.sigint;
         }
-        if other.daemon_modification.is_some() {
-            self.daemon_modification = other.daemon_modification;
+        if other.file_write_access.is_some() {
+            self.file_write_access = other.file_write_access;
         }
         if other.kmod.is_some() {
             self.kmod = other.kmod;
         }
-        if other.ptrace.is_some() {
-            self.ptrace = other.ptrace;
+        if other.ptrace_access.is_some() {
+            self.ptrace_access = other.ptrace_access;
         }
         for log in other.exclude {
             if !self.exclude.contains(&log) {
@@ -194,10 +185,10 @@ impl From<Args> for crate::config::Config {
 impl From<Args> for PolicyConfig {
     fn from(args: Args) -> Self {
         Self {
-            map_access: args.map_modification.unwrap(),
+            map_access: args.map_access.unwrap(),
             include_pins: args.include_pins.unwrap(),
-            file_write_access: args.daemon_modification.unwrap(),
-            ptrace_access: args.ptrace.unwrap(),
+            file_write_access: args.file_write_access.unwrap(),
+            ptrace_access: args.ptrace_access.unwrap(),
             signal_access: SecurityLevel::block,
             signal_allow_mask: utils::generate_sigmask(args.sigint.unwrap()),
         }

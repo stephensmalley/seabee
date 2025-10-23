@@ -2,7 +2,7 @@
 
 /// Module to test the functionality of a userspace's BPF maps
 ///
-/// ## Intentionally Unincluded tests
+/// ## Intentionally not included tests
 ///
 /// We do not check that `max_entries`` is initialized correctly since we
 /// examine each element individually

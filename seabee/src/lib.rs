@@ -55,7 +55,7 @@ impl std::fmt::Debug for SeaBee<'_> {
 ///
 /// 1. The eBPF code was converted to multiple [libbpf_rs::skel] during compilation.
 /// 1. First the 'enforce skeleton' containing eBPF LSM programs is loaded.
-/// 1. Next, 'policy skeleton' is laoded containing programs for updating policy.
+/// 1. Next, 'policy skeleton' is loaded containing programs for updating policy.
 /// 1. Each program is attached to its hook point and pinned to the eBPF filesystem.
 pub fn seabee_init(config: Config, open_obj: &mut MaybeUninit<OpenObject>) -> Result<SeaBee<'_>> {
     // set the static LOG_LEVEL so that it can be used by various skeletons
@@ -114,7 +114,7 @@ pub fn main_loop(
 /// Prints welcome message
 fn print_debug_info(config: &Config) {
     info!("Welcome to the SeaBee userspace!");
-    if utils::is_sigint_allowed(config.sigint) {
+    if config.sigint {
         info!("Kill the userspace with the Ctrl+C shortcut");
     }
     info!("See daemon output with `journalctl -u seabee -f`");

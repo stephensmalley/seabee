@@ -1,0 +1,19 @@
+---
+name: sample-policy
+version: 1
+scope:
+  - /usr/bin/vi
+files:
+  - /etc/test_seabee_policy
+config:
+  # audit access to eBPF maps in scope
+  map_access: audit
+  # block writes to files by out-of-scope processes
+  file_write_access: block
+  # block writes to eBPF pins in addition to other files
+  include_pins: true
+  # audit ptrace on /usr/bin/vi
+  ptrace_access: audit
+  # audit all signals to /usr/bin/vi
+  signal_access: audit
+  signal_allow_mask: 0x0

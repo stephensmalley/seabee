@@ -35,7 +35,7 @@ impl super::SeaBeePolicy {
         maps: &SeaBeeMapHandles,
     ) -> Result<String> {
         debug!("Got CLI Command: {cmd}");
-        // prevents unecesaary cloning
+        // prevents unnecessary cloning
         let info_string = format!("Completed CLI Command: {cmd}");
         // perform move of command here
         let output = match cmd {
@@ -250,7 +250,7 @@ impl super::SeaBeePolicy {
         Ok(())
     }
 
-    /// Removes a policy from SeaBee, the SeaBee policy folder, and from the kerenl
+    /// Removes a policy from SeaBee, the SeaBee policy folder, and from the kernel
     pub fn remove_policy(
         &mut self,
         request: SignedRequestInfo,
@@ -335,7 +335,7 @@ impl super::SeaBeePolicy {
         // add to seabee
         self.verification_keys.insert(new_key.id, new_key.clone());
 
-        // Update keylist on filesystem
+        // Update key list on filesystem
         if let Err(e) = self.export_keys() {
             // remove from seabee
             self.verification_keys.remove(&new_key.id);
@@ -394,9 +394,9 @@ impl super::SeaBeePolicy {
 
         // remove from seabee
         self.verification_keys.remove(&target_key.id.clone());
-        // update keylist
+        // update key list
         if let Err(e) = self.export_keys() {
-            //read file
+            // read file
             return Err(anyhow!("Key removed, but keylist was not correctly updated. This will cause an error on next restart.\nFix keylist manually at {}.\n{e}", constants::KEYLIST_PATH));
         }
         Ok(String::from("Success!"))
@@ -440,7 +440,7 @@ fn write_result_to_stream(result: Result<String>, stream: &mut UnixStream) {
 pub fn runtime_policy_update(sb: &mut crate::SeaBee) -> Result<()> {
     match sb.policy.listener.as_ref().unwrap().accept() {
         Ok((mut stream, _)) => {
-            // timouts only fail if duration is 0
+            // timeouts only fail if duration is 0
             stream.set_read_timeout(constants::SOCKET_TIMEOUT)?;
             stream.set_write_timeout(constants::SOCKET_TIMEOUT)?;
 

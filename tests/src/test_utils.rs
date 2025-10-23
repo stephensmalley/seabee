@@ -10,7 +10,7 @@ pub fn try_chmod(path: &str, expect_success: bool) -> Result<(), Failed> {
     // Try to change permissions
     let result = fs::set_permissions(path, fs::Permissions::from_mode(0o777));
 
-    // check expeteced result
+    // check expected result
     match result {
         Err(e) if e.kind() == ErrorKind::PermissionDenied => {
             if expect_success {

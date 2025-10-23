@@ -46,7 +46,7 @@ fn get_daemon_main_pid() -> Result<u64, Failed> {
     }
 }
 
-/// Helper to get all of the thread pids of the daemon
+/// Helper to get all of the thread ids of the daemon
 fn get_daemon_tids(pid: u64) -> Result<Vec<u64>, Failed> {
     let path = format!("/proc/{pid}/task");
     let (stdout, _) = TestCommandBuilder::default()

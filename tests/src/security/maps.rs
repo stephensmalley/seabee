@@ -2,7 +2,7 @@
 
 /// Module to check the security of map protections
 ///
-/// # Deliberately unincluded tests
+/// # Deliberately not included tests
 ///
 /// 1. It is believed that malicious eBPF programs may only interact with
 ///    an eBPF map that is defined in their source code or *maybe* through

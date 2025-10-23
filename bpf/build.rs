@@ -10,7 +10,7 @@ use libbpf_cargo::SkeletonBuilder;
 
 // task storage map is newest bpf feature we use, used to detect if kernel version is too old
 const HAS_TASK_STORAGE_MAP: &str = "BPF_MAP_TYPE_TASK_STORAGE";
-const HAS_MAP_CREATE: &str = "bpf_map_create";
+const HAS_BPF_MAP_CREATE: &str = "bpf_map_create";
 const HAS_INODE_SETATTR_IDMAP: &str =
     "(*inode_setattr)(struct mnt_idmap *, struct dentry *, struct iattr *)";
 
@@ -187,7 +187,7 @@ fn detect_vmlinux_features(vmlinux: &PathBuf) -> Result<HashSet<String>> {
     for line in reader.lines() {
         let line = line?;
         for feat in [
-            HAS_MAP_CREATE,
+            HAS_BPF_MAP_CREATE,
             HAS_INODE_SETATTR_IDMAP,
             HAS_TASK_STORAGE_MAP,
         ] {
@@ -215,8 +215,8 @@ fn export_features_to_header(features: HashSet<String>, out_path: &Path) -> Resu
     writeln!(f, "// Auto-generated header from build.rs")?;
 
     for flag in features {
-        if flag.contains(HAS_MAP_CREATE) {
-            writeln!(f, "#define HAS_MAP_CREATE")?;
+        if flag.contains(HAS_BPF_MAP_CREATE) {
+            writeln!(f, "#define HAS_BPF_MAP_CREATE")?;
         } else if flag.contains(HAS_INODE_SETATTR_IDMAP) {
             writeln!(f, "#define HAS_INODE_SETATTR_IDMAP")?;
         }

@@ -77,7 +77,7 @@ impl bindgen::callbacks::ParseCallbacks for BindgenCallbacks {
         }
     }
 
-    /// Converts Doxygen comments in header files to valid Rustdoc comments
+    /// Converts Doxygen comments in header files to valid rustdoc comments
     fn process_comment(&self, comment: &str) -> Option<String> {
         Some(doxygen_rs::transform(comment))
     }
@@ -184,11 +184,8 @@ fn detect_vmlinux_features(vmlinux: &PathBuf) -> Result<HashSet<String>> {
     let file = fs::File::open(vmlinux)?;
     let reader = BufReader::new(file);
     let mut found = HashSet::new();
-    for (index, line) in reader.lines().enumerate() {
+    for line in reader.lines() {
         let line = line?;
-        if index == 23585 {
-            println!("line: '{}'", line);
-        }
         for feat in [
             HAS_MAP_CREATE,
             HAS_INODE_SETATTR_IDMAP,

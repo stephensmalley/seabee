@@ -10,25 +10,25 @@
     },
     "rust-analyzer.cargo.targetDir": true,
     "cSpell.ignorePaths": [
-        "**/*.toml" // ignore toml files
+        "**/*.toml"
     ],
     "cSpell.languageSettings": [
         {
             "languageId": "markdown",
             "ignoreRegExpList": [
-                "`.*?`", // ignore inline code like `kubectl create`
-                "```[\\s\\S]*?```" // ignore fenced code blocks like ```bash ... ```
+                "`.*?`",
+                "```[\\s\\S]*?```"
             ]
         },
         {
             "languageId": "rust",
-            // Only check text inside Rust comments
             "includeRegExpList": [
                 "(?://+!?.*$)|(?:/\\*[\\s\\S]*?\\*/)"
             ]
         }
     ],
     "cSpell.words": [
+        "bindgen",
         "bpftool",
         "distro",
         "Dockerfiles",
@@ -51,6 +51,7 @@
         "ptrace",
         "RAII",
         "ringbuf",
+        "rustdoc",
         "seccomp",
         "setattr",
         "Sigmask",

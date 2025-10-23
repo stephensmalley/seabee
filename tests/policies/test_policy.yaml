@@ -6,5 +6,5 @@ scope:
 files:
 config:
   map_access: audit
-  file_write_access: block
+  file_write_access: audit
   include_pins: true

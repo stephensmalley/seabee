@@ -4,7 +4,7 @@ version: 2
 scope:
   - /this/file/does/not/exist
 files:
-  - /etc/seabee/keylist.yaml
+  - /etc/seabee/config.yaml
 config:
   map_access: allow
   file_write_access: audit

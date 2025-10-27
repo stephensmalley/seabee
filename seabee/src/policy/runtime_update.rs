@@ -3,7 +3,7 @@ use std::{
     fs,
     io::{BufRead, Write},
     os::unix::net::UnixStream,
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use anyhow::{anyhow, Context, Result};
@@ -147,7 +147,7 @@ impl super::SeaBeePolicy {
     pub fn add_new_policy(
         &mut self,
         new_policy: &mut PolicyFile,
-        pol_path: &PathBuf,
+        pol_path: &Path,
         sig_path: &Option<PathBuf>,
         maps: &SeaBeeMapHandles,
     ) -> Result<()> {

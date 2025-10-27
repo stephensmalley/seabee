@@ -205,12 +205,10 @@ pub fn remove_if_exists(path: &Path) -> Result<()> {
 pub static MACHINE_ID: OnceLock<String> = OnceLock::new();
 
 /// Initialize MACHINE_ID from `/etc/machine-id` if it isn't already set.
-///
-/// Returns Ok() if value was set, error otherwise
 pub fn init_machine_id() -> Result<()> {
     // Error on already assigned
-    if let Some(_) = MACHINE_ID.get() {
-        return Err(anyhow!("MACHINE_ID already inititalized"));
+    if MACHINE_ID.get().is_some() {
+        return Ok(());
     }
 
     // Read file

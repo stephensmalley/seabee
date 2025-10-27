@@ -54,4 +54,4 @@ pub const SERVICE_PATH: &str = "/etc/systemd/system/seabee.service";
 pub const SOCKET_PATH: &str = "/run/seabee_sock";
 
 // The read and write timeouts for socket communication between seabee and seabeectl
-pub const SOCKET_TIMEOUT: Option<Duration> = Some(Duration::from_secs(5));
+pub const SOCKET_TIMEOUT: Option<Duration> = Some(Duration::from_secs(1));

@@ -4,3 +4,4 @@
 __pycache__
 seabee-root-private-key.pem
 seabee-root-public-key.pem
+tests/shutdown_request.yaml

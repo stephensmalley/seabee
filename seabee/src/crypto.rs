@@ -18,7 +18,10 @@ use openssl::{
 use strum::IntoEnumIterator;
 use zerocopy::IntoBytes;
 
-use crate::{policy::policy_file::{FromYamlPath, PolicyFile}, utils};
+use crate::{
+    policy::policy_file::{FromYamlPath, PolicyFile},
+    utils,
+};
 
 /// A key used to verify SeaBeePolicy Updates
 #[derive(Debug, Clone)]
@@ -339,7 +342,7 @@ pub fn list_crypto_alg() -> String {
 }
 
 pub fn get_digest_algorithm(
-    policy_path: &PathBuf,
+    policy_path: &Path,
     cli_digest: &Option<SeaBeeDigest>,
 ) -> Result<MessageDigest> {
     if cli_digest.is_some() {

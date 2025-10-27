@@ -67,7 +67,7 @@ pub fn import_keys() -> Result<Vec<SavedKey>> {
 }
 
 /// Generates a [PolicyFile] from a yaml file. Does not do signature validation
-pub fn generate_policy_from_yaml(yaml_path: &PathBuf) -> Result<PolicyFile> {
+pub fn generate_policy_from_yaml(yaml_path: &Path) -> Result<PolicyFile> {
     // get policy
     let mut new_policy = PolicyFile::from_path(yaml_path)?;
 

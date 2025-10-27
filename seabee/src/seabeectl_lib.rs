@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     constants,
     crypto::{self, SeaBeeDigest},
+    policy::policy_file,
     utils,
 };
 use bpf::seabee::NO_POL_ID;
@@ -52,6 +53,13 @@ pub enum LocalCommand {
     /// Control the saved SeaBee Config
     #[command(subcommand)]
     Config(ConfigCommand),
+    /// Generate a shutdown request
+    ///
+    /// The request will have to be signed before it can be used
+    ShutdownRequest {
+        #[arg(default_value = "shutdown_request.yaml")]
+        path: PathBuf,
+    },
 }
 
 #[derive(Clone, Debug, Subcommand)]
@@ -116,6 +124,14 @@ pub enum SocketCommand {
     /// reverified with the new reduced set of keys.
     /// You cannot revoke the root key.
     RemoveKey(SignedRequestInfo),
+    /// Shutdown SeaBee with a signed shutdown request
+    ///
+    /// A shutdown request is a yaml document with the the key "machine_id"
+    /// and the value from /etc/machine-id. The request must be signed with
+    /// the SeaBee root key. It is recommended to remove
+    /// any signed shutdown requests after they have been used to prevent
+    /// an attacker from maliciously replaying those requests.
+    Shutdown(SignedRequestInfo),
 }
 
 /// Info needed to add, update, or remove a policy or key
@@ -154,6 +170,9 @@ impl std::fmt::Display for SocketCommand {
             }
             SocketCommand::RemoveKey(key_info) => {
                 write!(f, "Remove Key: {}", key_info.target_path.display())
+            }
+            SocketCommand::Shutdown(shutdown_info) => {
+                write!(f, "Shutdown: {}", shutdown_info.target_path.display())
             }
         }
     }
@@ -243,6 +262,7 @@ pub fn execute_local_command(cmd: LocalCommand) -> Result<()> {
         LocalCommand::Verify(info) => crypto::verify_policy_signature_cli(info)?,
         LocalCommand::Clean(subcmd) => seabeectl_clean(subcmd)?,
         LocalCommand::Config(subcmd) => seabeectl_config(subcmd)?,
+        LocalCommand::ShutdownRequest { path } => seabeectl_generate_shutdown(path)?,
     };
 
     println!("{output}");
@@ -288,6 +308,22 @@ fn update_config(path: &PathBuf) -> Result<()> {
         ));
     }
     Ok(())
+}
+
+fn seabeectl_generate_shutdown(path: &PathBuf) -> Result<String> {
+    // get machine_id
+    let machine_id = fs::read_to_string("/etc/machine-id")
+        .map_err(|e| anyhow!("failed to read /etc/machine-id: {e}"))?;
+    // write machine_id to yaml file
+    let shutdown_file = policy_file::ShutdownFile {
+        machine_id: machine_id.trim().to_string(),
+    };
+    let shutdown_file_string = serde_yaml::to_string(&shutdown_file)
+        .map_err(|e| anyhow!("failed to serialize shutdown file to string: {e}"))?;
+    fs::write(path, shutdown_file_string)
+        .map_err(|e| anyhow!("failed to write to shutdown file: {}\n{e}", path.display()))?;
+
+    Ok(format!("Shutdown file written to {}", path.display()))
 }
 
 fn init_stream() -> Result<UnixStream> {

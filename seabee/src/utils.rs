@@ -3,6 +3,7 @@ use std::{
     fs::{self, File},
     io::{ErrorKind, Read},
     path::{Path, PathBuf},
+    sync::OnceLock,
 };
 
 use anyhow::{anyhow, Result};
@@ -197,6 +198,25 @@ pub fn remove_if_exists(path: &Path) -> Result<()> {
         }
     };
 
+    Ok(())
+}
+
+/// Global OnceLock to hold the machine-id string.
+pub static MACHINE_ID: OnceLock<String> = OnceLock::new();
+
+/// Initialize MACHINE_ID from `/etc/machine-id` if it isn't already set.
+pub fn init_machine_id() -> Result<()> {
+    // Error on already assigned
+    if MACHINE_ID.get().is_some() {
+        return Ok(());
+    }
+
+    // Read file
+    let contents = fs::read_to_string("/etc/machine-id")?;
+    let trimmed = contents.trim().to_owned();
+
+    // Try to set the OnceLock
+    MACHINE_ID.set(trimmed).map_err(|e| anyhow!("{e}"))?;
     Ok(())
 }
 

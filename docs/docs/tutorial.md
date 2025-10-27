@@ -28,8 +28,6 @@ List any seabee policies with: `sudo seabeectl list`
 
 We don't have any policies yet, so lets add one. Lets ask seabeectl for help: `sudo seabeectl --help`
 
-TODO: show shutdown command in help menu
-
 ![sudo seabeectl --help](./assets/images/tutorial/seabeectl-help.png)
 
 It looks like the command we need is called `update`. Lets find out more: `sudo seabeectl update --help`
@@ -253,13 +251,48 @@ Now that we have removed our key, the only key left is the root key with ID 0.
 
 ## Shutdown SeaBee
 
-TODO
+Finally, we will use a shutdown command to exit SeaBee.
+
+When you are running `test_seabee`, it is possible to turn off SeaBee
+with `systemctl stop test_seabee`.
+However, the when `seabee` is running in production, is it designed to
+ignore signals and the `systemctl stop` command.
+This is to prevent an attacker from disabling SeaBee.
+`sudo seabeectl shutdown` requires a signature from the root key to
+shutdown SeaBee.
+
+To demonstrate how this works, first generate a shutdown request: `sudo seabeectl shutdown-request`.
+This will create a file called `shutdown_request.yaml`.
+
+`cat shutdown_request.yaml`
+
+```yaml
+machine_id: fffffffffffffffffffffffffffffff
+```
+
+The shutdown request contains a `machine_id` field that comes from `/etc/machine-id`.
+This makes the request unique to this machine.
+
+Next, sign the shutdown request: `sudo seabeectl sign -t shutdown_request.yaml -k seabee-root-private.pem`
+
+Finally, issue the shutdown command: `sudo seabeectl shutdown -t shutdown_request.yaml -s signature.sign`
+
+![Seabee shutdown request](./assets/images/tutorial/seabeectl-shutdown.png)
+
+It is important that the shutdown request is deleted after it is used so that an attacker cannot
+reuse the request to shutdown SeaBee again maliciously.
+
+SeaBee shutdown requests are generally used rarely, such as upgrading SeaBee to a
+new version.
+If there is a problem with SeaBee it is safer to remove and re-add SeaBee policies rather
+than shutting Seabee off altogether.
+
+- `rm shutdown_request.yaml`
+- `rm signature.sign`
 
 ## Conclusion
 
 That is the end of this tutorial!
-
-When you're done exploring SeaBee, turn off the test daemon: `systemctl stop test_seabee`
 
 Next, try our follow-up tutorial about [creating policies](./policy_tutorial.md)
 
@@ -308,6 +341,11 @@ cat tests/policies/remove_sample_policy.yaml
 sudo seabeectl sign -t tests/policies/remove_sample_policy.yaml -k rsa-private-key.pem
 sudo seabeectl remove -t tests/policies/remove_sample_policy.yaml -s signature.sign
 sudo seabeectl list
+
+# Shutdown SeaBee
+sudo seabeectl shutdown-request
+sudo seabeectl sign -t shutdown_request.yaml -k seabee-root-private.pem
+sudo seabeectl shutdown -t shutdown_request.yaml -s signature.sign
 
 # Removing a key
 sudo seabeectl sign -t rsa-public-key.pem -k rsa-private-key.pem

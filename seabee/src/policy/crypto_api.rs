@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Result};
 use tracing::warn;
@@ -26,7 +26,7 @@ impl super::SeaBeePolicy {
     pub fn verify_new_policy(
         &self,
         new_policy: &mut super::policy_file::PolicyFile,
-        input_path: &PathBuf,
+        input_path: &Path,
         sig_path: &Option<PathBuf>,
     ) -> Result<()> {
         // fail if no signature
@@ -60,7 +60,7 @@ impl super::SeaBeePolicy {
     /// return Ok(()) and print a warning on verification failure
     pub fn verify_signature(
         &self,
-        obj_path: &PathBuf,
+        obj_path: &Path,
         sig_path: &Option<PathBuf>,
         custom_digest: &Option<SeaBeeDigest>,
         key_id: Option<u32>,

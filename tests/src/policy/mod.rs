@@ -12,6 +12,7 @@ use seabee::{
     config::SecurityLevel,
     constants::{self, SEABEECTL_EXE},
 };
+use test_constants::{SHUTDOWN_REQUEST, SHUTDOWN_REQUEST_SIG};
 
 mod daemon_status;
 mod protect_tool;
@@ -68,12 +69,22 @@ fn daemon_is_ready() -> Result<bool> {
 }
 
 fn stop_daemon() -> Result<()> {
-    let status = Command::new("systemctl")
-        .args(["stop", "test_seabee.service"])
+    // shutdown
+    let status = Command::new(SEABEECTL_EXE)
+        .args([
+            "shutdown",
+            "-t",
+            SHUTDOWN_REQUEST,
+            "-s",
+            SHUTDOWN_REQUEST_SIG,
+        ])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
         .status()?;
     if !status.success() {
-        return Err(anyhow!("Failed to stop SeaBee daemon.\nstatus: {}", status));
+        return Err(anyhow!("Failed to shutdown SeaBee.\nstatus: {}", status));
     }
+
     Ok(())
 }
 

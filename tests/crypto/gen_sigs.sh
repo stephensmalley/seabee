@@ -8,6 +8,10 @@ sudo seabeectl sign -t crypto/keys/rsa-public.pem -k ../seabee-root-private-key.
 sudo seabeectl sign -t crypto/keys/ecdsa-public.pem -k ../seabee-root-private-key.pem -o crypto/sigs/ecdsa-public-root-sig.sign --nopass
 sudo seabeectl sign -t crypto/keys/ecdsa-public.pem -k crypto/keys/ecdsa-private.pem -o crypto/sigs/ecdsa-public-ecdsa-sig.sign --nopass
 
+# Shutdown Request
+sudo seabeectl shutdown-request
+sudo seabeectl sign -t shutdown_request.yaml -k ../seabee-root-private-key.pem -o crypto/sigs/shutdown-request.sign --nopass
+
 # Sign Policies
 ## Basic policy
 sudo seabeectl sign -t policies/test_policy.yaml -k crypto/keys/ecdsa-private.pem -o crypto/sigs/test-policy-ecdsa.sign --nopass

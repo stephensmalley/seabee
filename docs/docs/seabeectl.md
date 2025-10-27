@@ -95,6 +95,17 @@ There are three subcommands for `seabeectl config`
 This just performs a copy and overwrites the existing saved config.
 - `delete` deletes the current saved config.
 
+## `seabeectl shutdown-request`
+
+Generate a SeaBee shutdown request for this machine.
+
+example: `seabeectl shutdown-request /path/to/shutdown_request.yaml`
+
+By default, the file will be created as `shutdown_request.yaml` in the current directory.
+Optionally, a path can be passed to this command as a final argument.
+
+See [shutdown](#seabeectl-shutdown) for how to use the generated file to shutdown SeaBee.
+
 ## `seabeectl list`
 
 Shows a list of all currently loaded SeaBee policies
@@ -241,4 +252,16 @@ The SeaBee root key cannot be removed, it can only be changed while SeaBee is tu
 
 ## `seabeectl shutdown`
 
-TODO
+Shutdown SeaBee with a shutdown request.
+
+example: `sudo seabeectl shutdown -t shutdown_request.yaml -s shutdown_signature.sign`
+
+The shutdown request is a YAML file with Linux machine id from `/etc/machine-id`.
+This file can be generated with [`seabeectl shutdown-request`](#seabeectl-shutdown-request).
+The shutdown request must be signed with the SeaBee root key.
+
+Options for this command include
+
+- `-t` the path to the shutdown request file
+- `-s` the path to the signature for the shutdown request
+- `-d` the digest used by signature if it doesn't use the default (SHA3-256)

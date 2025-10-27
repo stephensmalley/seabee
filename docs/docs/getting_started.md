@@ -79,11 +79,11 @@ This may occur because the program is designed to be difficult to remove, even i
 
 ## Run SeaBee as a Daemon
 
-WARNING: daemon currently can only be stopped via reboot see: <https://github.com/NationalSecurityAgency/seabee/issues/23>
-
 * To launch the daemon with release version: `make run`
 * To install the daemon to run on next boot: `make enable`
 * can currently be reversed with `sudo systemctl disable seabee.service`
+
+To turn off Seabee, see [seabeectl shutdown](./seabeectl.md#seabeectl-shutdown)
 
 NOTE: after running the test cases, you can use the `test_seabee` daemon:
 

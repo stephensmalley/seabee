@@ -21,7 +21,7 @@ test-release: integration-test-release policy-test-release
 integration-test: example-kmod test-kmod
 	sudo ../target/debug/integration_test
 
-integration-release: example-kmod test-kmod
+integration-test-release: example-kmod test-kmod
 	sudo ../target/release/integration_test
 
 # launch and test seabee policy with debug binaries

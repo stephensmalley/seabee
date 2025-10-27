@@ -477,6 +477,11 @@ fn write_result_to_stream(result: Result<String>, stream: &mut UnixStream) {
     if let Err(e) = stream.write_all(response.as_bytes()) {
         error!("Failed to write respone to cli.\nError: {e}\nResponse: {response}");
     }
+
+    // close socket
+    if let Err(e) = stream.shutdown(std::net::Shutdown::Write) {
+        error!("Failed to close socket.\nError: {e}");
+    }
 }
 
 /// Checks for a runtime policy update command and executes it if a command is found

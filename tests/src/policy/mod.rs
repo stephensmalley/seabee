@@ -78,6 +78,8 @@ fn stop_daemon() -> Result<()> {
             "-s",
             SHUTDOWN_REQUEST_SIG,
         ])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
         .status()?;
     if !status.success() {
         return Err(anyhow!("Failed to shutdown SeaBee.\nstatus: {}", status));

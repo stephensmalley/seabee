@@ -36,6 +36,8 @@
         "ebpf",
         "EOPNOTSUPP",
         "FIPS",
+        "fontawesome",
+        "journalctl",
         "karmor",
         "keylist",
         "kmod",

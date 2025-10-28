@@ -210,4 +210,4 @@ that is 'block' for the same policy scope/executable.
 Currently, an executable or a file can only have one SeaBee policy ID.
 This limits what types of policies can be created since you cannot
 have a shared tool defined in multiple policy scopes.
-This may be addressed in the future through [issue 34](github.com/NationalSecurityAgency/seabee/issues/34).
+This may be addressed in the future through [issue 34](https://github.com/NationalSecurityAgency/seabee/issues/34).

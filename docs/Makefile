@@ -13,7 +13,7 @@ RUST_TGT = docs/assets/rust
 help:
 	$(MKDOCS) --help
 
-build: $(DEMO) rust-docs
+build: rust-docs
 	doxygen
 	$(BUILD_CMD)
 
@@ -21,7 +21,7 @@ build: $(DEMO) rust-docs
 serve-dev:
 	$(MKDOCS) serve
 
-serve-build: $(DEMO) rust-docs
+serve-build: rust-docs
 	SITE_URL="http://localhost:8080/" $(BUILD_CMD)
 	$(PYTHON) -m http.server -d $(BUILD_PATH) 8080
 
@@ -30,7 +30,7 @@ rust-docs:
 	rm -r $(RUST_TGT) || true
 	cp -r $(RUST_SRC) $(RUST_TGT)
 
-$(DEMO): $(DEMO_SRC)
+demo: $(DEMO_SRC)
 	if [ -z $$CI ]; then make -C .. release; fi
 	if [ -z $$CI ]; then autocast --overwrite $(DEMO_SRC) $(DEMO); fi
 

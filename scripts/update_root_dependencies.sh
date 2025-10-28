@@ -37,6 +37,8 @@ os_check() {
     # Install EPEL
     # https://www.redhat.com/en/blog/whats-epel-and-how-do-i-use-it
     dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+    # Enable CodeReady Builder for Doxygen
+    dnf config-manager --set-enabled crb
     ;;
   *) ;;
   esac

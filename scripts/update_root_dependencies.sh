@@ -113,7 +113,7 @@ docker_install() {
   elif [ $USE_DNF -eq 1 ]; then
     dnf -y install dnf-plugins-core
     if command -v dnf5 &>/dev/null; then
-      dnf config-manager addrepo https://download.docker.com/linux/"$DISTRO"/docker-ce.repo
+      dnf config-manager addrepo --from-repofile=https://download.docker.com/linux/"$DISTRO"/docker-ce.repo
     else
       dnf config-manager --add-repo https://download.docker.com/linux/"$DISTRO"/docker-ce.repo
     fi

@@ -13,6 +13,7 @@ const HAS_TASK_STORAGE_MAP: &str = "BPF_MAP_TYPE_TASK_STORAGE";
 const HAS_BPF_MAP_CREATE: &str = "bpf_map_create";
 const HAS_INODE_SETATTR_IDMAP: &str =
     "(*inode_setattr)(struct mnt_idmap *, struct dentry *, struct iattr *)";
+const HAS_INODE_SETXATTR_IDMAP: &str = "(*inode_setxattr)(struct mnt_idmap *, struct dentry *, const char *, const void *, size_t, int)";
 
 /// Tells Cargo to rerun the build if the supplied file has changed
 fn track_file(header: &str) {
@@ -190,6 +191,7 @@ fn detect_vmlinux_features(vmlinux: &PathBuf) -> Result<HashSet<String>> {
             HAS_BPF_MAP_CREATE,
             HAS_INODE_SETATTR_IDMAP,
             HAS_TASK_STORAGE_MAP,
+            HAS_INODE_SETXATTR_IDMAP,
         ] {
             if line.contains(feat) {
                 found.insert(feat.to_string());
@@ -219,6 +221,8 @@ fn export_features_to_header(features: HashSet<String>, out_path: &Path) -> Resu
             writeln!(f, "#define HAS_BPF_MAP_CREATE")?;
         } else if flag.contains(HAS_INODE_SETATTR_IDMAP) {
             writeln!(f, "#define HAS_INODE_SETATTR_IDMAP")?;
+        } else if flag.contains(HAS_INODE_SETXATTR_IDMAP) {
+            writeln!(f, "#define HAS_INODE_SETXATTR_IDMAP")?;
         }
     }
 

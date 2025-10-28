@@ -42,6 +42,7 @@
         "kubearmor",
         "libbpf",
         "libtest",
+        "mkdocs",
         "nationalsecurityagency",
         "NLMSG",
         "nlmsghdr",

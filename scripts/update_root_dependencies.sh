@@ -57,7 +57,7 @@ install_system_packages() {
   printf "Installing tools and libraries needed for development\n"
   # Warning: if one of 'common_deps' fails to install, they all fail to install
   local common_deps
-  common_deps=(clang make pipx python3 python3-pip strace)
+  common_deps=(clang make pipx python3 python3-pip strace doxygen)
   # depedencies necessary to build static libraries for libelf and zlib
   # which are dependencies of libbpf which is also built statically
   # openssl dependencies are also included

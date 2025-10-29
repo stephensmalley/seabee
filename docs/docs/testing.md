@@ -1,4 +1,4 @@
-# Testing Philosophy
+# Testing
 
 ## Attack Surface
 

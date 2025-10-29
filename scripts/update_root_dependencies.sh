@@ -37,6 +37,8 @@ os_check() {
     # Install EPEL
     # https://www.redhat.com/en/blog/whats-epel-and-how-do-i-use-it
     dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+    # Enable CodeReady Builder for Doxygen
+    dnf config-manager --set-enabled crb
     ;;
   *) ;;
   esac
@@ -57,7 +59,7 @@ install_system_packages() {
   printf "Installing tools and libraries needed for development\n"
   # Warning: if one of 'common_deps' fails to install, they all fail to install
   local common_deps
-  common_deps=(clang make pipx python3 python3-pip strace)
+  common_deps=(clang make pipx python3 python3-pip strace doxygen)
   # depedencies necessary to build static libraries for libelf and zlib
   # which are dependencies of libbpf which is also built statically
   # openssl dependencies are also included

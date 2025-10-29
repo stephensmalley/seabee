@@ -30,11 +30,6 @@ version_greater_equal() {
 }
 
 python_check() {
-  # TODO remove this when we want to deploy docs
-  # need to be able to see pyproject.toml and need path updated: `export PATH="$PATH:/root/.local/bin"`
-  if [ "$DOCKER" -eq 1 ]; then
-    return 0
-  fi
   if ! command -v "$PYTHON" &>/dev/null || ! version_greater_equal "$($PYTHON --version | cut -d" " -f2)" $PYTHON_VERSION; then
     printf "Compatible Python version not detected\n"
     printf "Please install Python %s or newer\n" "$PYTHON_VERSION"

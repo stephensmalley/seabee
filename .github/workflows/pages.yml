@@ -1,0 +1,41 @@
+name: Publish Documentation
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  packages: read
+
+env:
+  SITE_URL: 'https://NationalSecurityAgency.github.io/seabee/'
+  REPO_URL: 'https://github.com/NationalSecurityAgency/seabee/'
+  EDIT_URI: 'edit/main/docs'
+  REPO_ICON: 'fontawesome/brands/github'
+
+jobs:
+  publish-docs:
+    runs-on: ubuntu-24.04
+
+    container:
+      image: ghcr.io/nationalsecurityagency/seabee-build-ubuntu-noble:latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build rust docs
+        run: make docs && cp -r target/doc docs/docs/assets/rust
+
+      - name: Build doxygen
+        run: cd docs && doxygen
+
+      - name: Poetry Install
+        run: poetry install
+
+      - name: Trust git directory
+        run: git config --global --add safe.directory /__w/seabee/seabee
+
+      - name: Deploy mkdocs
+        run: cd docs && poetry run mkdocs gh-deploy --force

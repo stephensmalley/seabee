@@ -12,110 +12,260 @@ instructions:
     hidden: true
 
   - !Command
-    command: "# Compile the program and look at the binary's properties"
+    command: "# Welcome to the SeaBee Demo"
+  - !Command
+    command: "# Press space bar or hit the play button to advance..."
+
+  - !Marker SeaBee Binary
+  - !Clear
+  - !Command
+    command: "# Compile SeaBee"
   - !Command
     command: make release
   - !Command
+    command: ""
+  - !Command
+    command: "# View binary size"
+  - !Command
     command: ls -lh target/release/seabee
+  - !Command
+    command: ""
+  - !Command
+    command: "# View information about the binary"
   - !Command
     command: file target/release/seabee
   - !Command
+    command: ""
+  - !Command
+    command: "# Only a few dynamic dependencies"
+  - !Command
     command: ldd target/release/seabee
+  - !Command
+    command: ""
+  - !Command
+    command: "# Press space to advance..."
 
-  - !Marker CLI Options
+  - !Marker Start SeaBee
   - !Clear
   - !Command
-    command: "# Print out the help menu"
+    command: "# Start up SeaBee"
   - !Command
-    command: target/release/seabee -h
-
-  - !Marker systemd service
-  - !Clear
+    command: sudo systemctl start test_seabee
   - !Command
-    command: "# Look at the systemd service file"
+    command: "# Check SeaBee status"
   - !Command
-    command: cat /etc/systemd/system/seabee.service
-
-  - !Marker systemctl status
-  - !Clear
+    command: systemctl status --no-pager -n 0 test_seabee
   - !Command
-    command: "# Look at the status of the systemd service"
+    command: "# Press space to advance..."
   - !Command
-    command: systemctl status -n 0 --no-pager seabee
+    command: sleep 10 # wait for start up
+    hidden: true
 
   - !Marker journald
   - !Clear
   - !Command
-    command: "# Look at the last 12 logs sent to the journal"
+    command: "# View SeaBee logs with journalctl"
   - !Command
-    command: journalctl --no-hostname --no-pager -n 12 -u seabee --output cat
-    type_speed: 50ms
+    command: journalctl --no-pager -n 10 -u test_seabee --output cat
+  - !Command
+    command: "# Press space to advance..."
 
-  - !Marker pstree
+  - !Marker BPFFS mount protection
   - !Clear
   - !Command
-    command: "# Running under systemd prevents killing of the parent"
-  - !Command
-    command: PID=`systemctl show -p MainPID --value seabee.service` && echo $PID
-    type_speed: 50ms
-  - !Command
-    command: pstree -ps $PID
-
-  - !Marker bpftool progs
-  - !Clear
-  - !Command
-    command: "# List the names of the eBPF programs we're running"
-  - !Command
-    command: "sudo bpftool prog list -j | jq --argjson PID \"$PID\" '.[] | select(.pids[0].pid == $PID) | .name'"
-    type_speed: 50ms
-
-  - !Marker bpffs mount protection
-  - !Clear
-  - !Command
-    command: "# Protection of the BPF filesystem mount"
+    command: "# SeaBee protects the bpffs mount"
   - !Command
     command: mount | grep /sys/fs/bpf
   - !Command
+    command: ""
+  - !Command
+    command: "# eBPF Programs use bpffs mount for pinning"
+  - !Command
     command: sudo ls -l /sys/fs/bpf
   - !Command
-    command: stat /sys/fs/bpf
+    command: ""
+  - !Command
+    command: "# attempt to unmount bpffs"
   - !Command
     command: sudo umount -f /sys/fs/bpf
   - !Command
-    command: journalctl --no-hostname --no-pager -n 20 -u seabee --output cat | grep umount
+    command: ""
+  - !Command
+    command: "# Check SeaBee logs to see denial"
+  - !Command
+    command: journalctl --no-hostname --no-pager -n 20 -u test_seabee --output cat | grep umount
     type_speed: 50ms
+  - !Command
+    command: "# Press space to advance..."
 
   - !Marker pin protection
   - !Clear
   - !Command
-    command: "# Protection of the BPF pins"
+    command: "# SeaBee protects eBPF pins"
   - !Command
     command: sudo ls /sys/fs/bpf/seabee
   - !Command
-    command: sudo stat /sys/fs/bpf/seabee/lsm_bpf
+    command: ""
   - !Command
-    command: sudo rm -f /sys/fs/bpf/seabee/lsm_bpf
+    command: "# Examine one of SeaBee's pins"
   - !Command
-    command: journalctl --no-hostname --no-pager -n 20 -u seabee --output cat | grep rm
+    command: sudo stat /sys/fs/bpf/seabee/seabee_bpf_map
+  - !Command
+    command: ""
+  - !Command
+    command: "# try deleting the pin"
+  - !Command
+    command: sudo rm -f /sys/fs/bpf/seabee/seabee_bpf_map
+  - !Command
+    command: ""
+  - !Command
+    command: "# Check the logs for a denial"
+  - !Command
+    command: journalctl --no-hostname --no-pager -n 20 -u test_seabee --output cat | grep rm
     type_speed: 50ms
+  - !Command
+    command: "# Press space to advance..."
 
-
-  - !Marker ptrace protection
+  - !Marker map protection
   - !Clear
   - !Command
-    command: "# Protection of the userspace process from ptrace() syscall"
+    command: "# SeaBee protects eBPF maps"
   - !Command
-    command: sudo strace -p $PID
+    command: sudo bpftool map list | grep seabee
   - !Command
-    command: journalctl --no-hostname --no-pager -n 20 -u seabee --output cat | grep strace
+    command: ""
+  - !Command
+    command: "# Check the logs for a denial"
+  - !Command
+    command: journalctl --no-hostname --no-pager -n 20 -u test_seabee --output cat | grep bpftool
     type_speed: 50ms
+  - !Command
+    command: "# Press space to advance..."
 
-  - !Marker kill protection
+  - !Marker seabeectl
   - !Clear
   - !Command
-    command: "# Protection of the userspace process from the kill() syscall"
+    command: "# Use seabeectl to interact with SeaBee"
+  - !Command # TODO: This gets cut off
+    command: sudo seabeectl --help
   - !Command
-    command: sudo kill -9 $PID
+    command: "# Press space to advance..."
+
+  - !Marker View SeaBee policy
+  - !Clear
   - !Command
-    command: journalctl --no-hostname --no-pager -n 20 -u seabee --output cat | grep kill
+    command: "# SeaBee uses policy to protect other processes"
+  - !Command
+    command: batcat --no-pager tests/policies/sample_policy.yaml
+  - !Command
+    command: "# Press space to advance..."
+
+  - !Marker Sign SeaBee policy
+  - !Clear
+  - !Command
+    command: "# SeaBee policies must be signed"
+  - !Command
+    command: sudo seabeectl sign -t tests/policies/sample_policy.yaml -k rsa-private-key.pem --nopass
+    type_speed: 75ms
+  - !Command
+    command: ""
+  - !Command
+    command: "# Add the public key to SeaBee"
+  - !Command
+    command: sudo seabeectl add-key -t rsa-public-key.pem
+  - !Command
+    command: ""
+  - !Command
+    command: "# Press space to advance..."
+
+  - !Marker Add SeaBee policy
+  - !Clear
+  - !Command
+    command: "# Finally add the policy"
+  - !Command
+    command: sudo seabeectl update -t tests/policies/sample_policy.yaml -s signature.sign
+  - !Command
+    command: ""
+  - !Command
+    command: "# Press space to advance..."
+
+  - !Marker Test SeaBee policy
+  - !Clear
+  - !Command
+    command: "# view the policy we just added"
+  - !Command
+    command: sudo seabeectl show name sample-policy
+  - !Command
+    command: ""
+  - !Command
+    command: "# Try to delete /etc/test_seabee_policy"
+  - !Command
+    command: "sudo rmdir /etc/test_seabee_policy"
+  - !Command
+    command: ""
+  - !Command
+    command: "# Check the logs for a denial"
+  - !Command
+    command: journalctl --no-hostname --no-pager -n 20 -u test_seabee --output cat | grep rmdir
     type_speed: 50ms
+  - !Command
+    command: ""
+  - !Command
+    command: "# Press space to advance..."
+
+  - !Marker Remove SeaBee policy
+  - !Clear
+  - !Command
+    command: "# SeaBee requires a signature to remove a policy"
+  - !Command
+    command: sudo seabeectl sign -t tests/policies/remove_sample_policy.yaml -k rsa-private-key.pem --nopass
+    type_speed: 75ms
+  - !Command
+    command: ""
+  - !Command
+    command: "# Remove the policy"
+  - !Command
+    command: sudo seabeectl remove -t tests/policies/remove_sample_policy.yaml -s signature.sign
+  - !Command
+    command: ""
+  - !Command
+    command: "# Press space to advance..."
+
+  - !Marker Remove SeaBee key
+  - !Clear
+  - !Command
+    command: "# SeaBee requires a signature to remove a key"
+  - !Command
+    command: sudo seabeectl sign -t rsa-public-key.pem -k rsa-private-key.pem --nopass
+    type_speed: 75ms
+  - !Command
+    command: ""
+  - !Command
+    command: "# Remove the key"
+  - !Command
+    command: sudo seabeectl remove-key -t rsa-public-key.pem -s signature.sign
+  - !Command
+    command: "# Press space to advance..."
+
+  - !Marker Shutdown SeaBee
+  - !Clear
+  - !Command
+    command: "# Generate a shutdown request with seabeectl"
+  - !Command
+    command: sudo seabeectl shutdown-request
+  - !Command
+    command: ""
+  - !Command
+    command: "# Sign the request with root key"
+  - !Command
+    command: sudo seabeectl sign -t shutdown_request.yaml -k seabee-root-private-key.pem --nopass
+  - !Command
+    command: ""
+  - !Command
+    command: "# Shutdown SeaBee"
+  - !Command
+    command: sudo seabeectl shutdown -t shutdown_request.yaml -s signature.sign
+  - !Command
+    command: ""
+  - !Command
+    command: "# Finished! Press space bar or hit the play button to restart."

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use std::collections::HashSet;
-use std::fs;
 use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Once};
@@ -67,7 +66,7 @@ pub fn configure_logging(log_level: LogLevel) -> Result<()> {
 
 pub fn init_paths() -> Result<()> {
     trace!("create pin path");
-    fs::create_dir_all(PIN_DIR)?;
+    utils::create_dir_if_not_exists(PIN_DIR)?;
     // These folders are used to store key and signature data.
     // They do not get cleaned up because we need to save policies and keys
     // through a reboot. We should not error if they exist when we start up.

@@ -1,4 +1,4 @@
-# A Tutorial Using `seabeectl` to Interact with SeaBee
+# SeaBee Tutorial
 
 This tutorial  is intended to walk through the different features of
 SeaBee and how they work. It should only take a few minutes.

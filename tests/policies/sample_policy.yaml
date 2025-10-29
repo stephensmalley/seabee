@@ -2,8 +2,10 @@
 name: sample-policy
 version: 1
 scope:
+  # Not an eBPF tool, but useful for demos!
   - /usr/bin/vi
 files:
+  # Directory must exist on policy load
   - /etc/test_seabee_policy
 config:
   # audit access to eBPF maps in scope

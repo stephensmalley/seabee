@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-24.04
 
     container:
-      image: ghcr.io/nationalsecurityagency/seabee-build-ubuntu-jammy
+      image: ghcr.io/nationalsecurityagency/seabee-build-ubuntu-jammy:latest
 
     steps:
       - name: Checkout code

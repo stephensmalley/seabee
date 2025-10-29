@@ -420,7 +420,7 @@ Before continuing verify that
 
 ### Policy Scope
 
-Read about [policy scope](./policy.md#policy-scope)
+Read about [policy scope](./policy.md#scope)
 
 When creating a policy scope for a tool, there are several important considerations.
 

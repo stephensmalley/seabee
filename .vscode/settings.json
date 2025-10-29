@@ -28,7 +28,10 @@
         }
     ],
     "cSpell.words": [
+        "argjson",
+        "batcat",
         "bindgen",
+        "BPFFS",
         "bpftool",
         "distro",
         "Dockerfiles",
@@ -51,6 +54,7 @@
         "Pkey",
         "prctl",
         "printk",
+        "pstree",
         "ptrace",
         "RAII",
         "ringbuf",

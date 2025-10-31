@@ -8,20 +8,19 @@ TAG="v1.2.0" #TODO: update when the new version is released
 
 # Check if exactly one argument is provided
 if [ "$#" -ne 1 ]; then
-    echo "Usage: $0 {ubuntu-24|fedora-43|rocky-9}"
-    exit 1
+  echo "Usage: $0 {ubuntu-24|fedora-43|rocky-9}"
+  exit 1
 fi
 
 # Allowed values
 ARG="$1"
 case "$ARG" in
-    ubuntu-24|fedora-43|rocky-9)
-        ;;
-    *)
-        echo "Invalid argument: $ARG"
-        echo "Allowed values: ubuntu-24, fedora-43, rocky-9"
-        exit 1
-        ;;
+ubuntu-24 | fedora-43 | rocky-9) ;;
+*)
+  echo "Invalid argument: $ARG"
+  echo "Allowed values: ubuntu-24, fedora-43, rocky-9"
+  exit 1
+  ;;
 esac
 
 # Get SeaBee file

@@ -7,6 +7,7 @@ After=sysinit.target
 Type=exec
 ExecStart=/usr/sbin/seabee
 StandardOutput=null
+KillSignal=SIGINT
 
 [Install]
 WantedBy=basic.target

@@ -78,7 +78,7 @@ pub fn load_ebpf(
     )?;
     kernel_api::label_files_for_policy(&sb.policy.base_policy, &sb.maps)?;
 
-    info!("Sucessfully loaded eBPF LSM");
+    info!("Successfully loaded eBPF LSM");
     Ok(sb)
 }
 

@@ -156,6 +156,12 @@ Now you can turn off SeaBee" `systemctl stop seabee` and proceed to the tutorial
 
 If you encounter errors, try building from source or open an [issue on github](https://github.com/NationalSecurityAgency/seabee/issues).
 
+### Uninstall
+
+```bash
+wget -qO- https://raw.githubusercontent.com/nationalsecurityagency/seabee/main/install/uninstall.sh | sudo bash
+```
+
 ## SeaBee Tutorial
 
 Great! You're all ready to go.

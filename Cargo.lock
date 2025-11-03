@@ -122,7 +122,7 @@ checksum = "5c8214115b7bf84099f1309324e63141d4c5d7cc26862f97a0a857dbefe165bd"
 
 [[package]]
 name = "bpf"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "anyhow",
  "bindgen",
@@ -1071,7 +1071,7 @@ dependencies = [
 
 [[package]]
 name = "seabee"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "anyhow",
  "bpf",
@@ -1294,7 +1294,7 @@ dependencies = [
 
 [[package]]
 name = "tests"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "anyhow",
  "bpf",

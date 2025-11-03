@@ -6,13 +6,13 @@ SeaBee needs root or 'sudo' or run.
 
 We specifically run tests to ensure support on the following distributions:
 
-* Fedora 41, 42
+* Fedora 41, 42, 43
 * RHEL/Rocky 9
 * Ubuntu 22.04, 24.04
 
 However, in theory, SeaBee should work on any Linux kernel 5.14+ since we do not rely on any features added after 5.14.
 
-## Fedora 41, 42
+## Fedora 41, 42, 43
 
 Should work out of the box
 

@@ -119,5 +119,5 @@ fn print_debug_info(config: &Config) {
     }
     info!("See daemon output with `journalctl -u seabee -f`");
     info!("If cannot remove seabee another way, you will have to 'sudo reboot'");
-    debug!("{:#?}", config);
+    info!("{:#?}", config);
 }

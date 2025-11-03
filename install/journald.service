@@ -5,8 +5,9 @@ After=sysinit.target
 
 [Service]
 Type=exec
-ExecStart=/usr/bin/seabee
+ExecStart=/usr/sbin/seabee
 StandardOutput=null
+KillSignal=SIGINT
 
 [Install]
 WantedBy=basic.target

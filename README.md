@@ -13,7 +13,7 @@ or subvert security controls implemented in eBPF.
 
 For an overview, see our [presentation about SeaBee](https://www.youtube.com/watch?v=4bWpTKK7Mlw) from the 2025 Linux Security Summit NA
 
-To try out SeaBee, see [Getting Started with SeaBee](./docs/docs/getting_started.md). Then try our [tutorial](./docs/docs/tutorial.md).
+To try out SeaBee, see [Getting Started with SeaBee](https://code.nsa.gov/seabee/getting_started/). Then try our [tutorial](https://code.nsa.gov/seabee/tutorial/).
 
 Don't hesitate to create an issue or a PR. See [CONTRIBUTING.md](./CONTRIBUTING.md)
 
@@ -28,9 +28,9 @@ The different elements of SeaBee are highlighted in blue.
 The other elements show how users interact with SeaBee and
 how other processes interact with SeaBee.
 
-- `seabeectl` is a command line interface for SeaBee. See [`seabeectl` docs](./docs/docs/seabeectl.md)
-- The SeaBee userspace manages loading eBPF, tracking [policy](./docs/docs/policy.md) updates,
-and [logging](./docs/docs/logging.md).
+- `seabeectl` is a command line interface for SeaBee. See [`seabeectl` docs](https://code.nsa.gov/seabee/seabeectl/)
+- The SeaBee userspace manages loading eBPF, tracking [policy](https://code.nsa.gov/seabee/policy/) updates,
+and [logging](https://code.nsa.gov/seabee/logging/).
 - eBPF maps are used to store SeaBee policy in the kernel
 - eBPF LSM programs are used to enforce SeaBee policies on processes
 when they take a particular action that SeaBee cares about.
@@ -44,14 +44,12 @@ Examples include accessing eBPF maps or files associated with a SeaBee policy.
 
 ## Documentation
 
-Documentation is found under `docs/docs/`
+Documentation is found under `docs/docs/` and is hosted at [code.nsa.gov/seabee](https://code.nsa.gov/seabee).
 
-- To build the documentation:
-  - Reload the shell `source ~/.bashrc`
-  - `make docs` and then `make -C docs build`
-- To view the documentation in a browser: `make -C docs serve-build`
+To build and view the documentation locally in a browser:
 
-TODO: move docs to github pages
+- `make update`
+- `make -C docs serve-build`
 
 ## Disclaimer of Endorsement
 

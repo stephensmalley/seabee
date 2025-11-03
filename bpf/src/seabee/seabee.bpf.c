@@ -484,9 +484,10 @@ int BPF_PROG(seabee_kernel_module_request, char *kmod_name)
 		log_kernel_module_request(LOG_LEVEL_WARN, LOG_REASON_DENY,
 		                          (const unsigned char *)kmod_name);
 		return DENY;
+	} else if (kmod_modification == (u32)SECURITY_AUDIT) {
+		log_kernel_module_request(LOG_LEVEL_INFO, LOG_REASON_AUDIT,
+		                          (const unsigned char *)kmod_name);
 	}
-	log_kernel_module_request(LOG_LEVEL_INFO, LOG_REASON_ALLOW,
-	                          (const unsigned char *)kmod_name);
 	return ALLOW;
 }
 
@@ -495,7 +496,7 @@ int BPF_PROG(seabee_kernel_module_request, char *kmod_name)
  *
  * lsm/kernel_read_file is invoked when the kernel is about to directly read
  * from a file or the file system specified by userspace for some purpose
- * including but not limited to kernel modules laoded via finit_module()
+ * including but not limited to kernel modules loaded via finit_module()
  *
  * enum kernel_load_data_id is the same as __kernel_read_file_id defined in
  * https://elixir.bootlin.com/linux/latest/source/include/linux/kernel_read_file.h#L9
@@ -514,13 +515,14 @@ SEC("lsm/kernel_read_file")
 int BPF_PROG(seabee_kernel_read_file, struct file *file,
              enum kernel_read_file_id id, bool contents)
 {
-	if (id == READING_MODULE) {
+	if (id == READING_MODULE && kmod_modification == (u32)SECURITY_BLOCK) {
 		log_kernel_read_file(LOG_LEVEL_WARN, LOG_REASON_DENY, id,
 		                     file->f_path.dentry->d_name.name);
 		return DENY;
+	} else if (kmod_modification == (u32)SECURITY_AUDIT) {
+		log_kernel_read_file(LOG_LEVEL_INFO, LOG_REASON_AUDIT, id,
+		                     file->f_path.dentry->d_name.name);
 	}
-	log_kernel_read_file(LOG_LEVEL_INFO, LOG_REASON_ALLOW, id,
-	                     file->f_path.dentry->d_name.name);
 	return ALLOW;
 }
 
@@ -547,11 +549,12 @@ SEC("lsm/kernel_load_data")
 int BPF_PROG(seabee_kernel_load_data, enum kernel_load_data_id id,
              bool contents)
 {
-	if (id == LOADING_MODULE) {
+	if (id == LOADING_MODULE && kmod_modification == (u32)SECURITY_BLOCK) {
 		log_kernel_load_data(LOG_LEVEL_WARN, LOG_REASON_DENY, id);
 		return DENY;
+	} else if (kmod_modification == (u32)SECURITY_AUDIT) {
+		log_kernel_load_data(LOG_LEVEL_INFO, LOG_REASON_AUDIT, id);
 	}
-	log_kernel_load_data(LOG_LEVEL_INFO, LOG_REASON_ALLOW, id);
 	return ALLOW;
 }
 
@@ -821,9 +824,9 @@ int BPF_PROG(seabee_start_pin, int cmd, union bpf_attr *attr, unsigned int size,
 }
 
 /**
- * @brief Label an inode associted with a bpf pin
+ * @brief Label an inode associated with a bpf pin
  *
- * This hook is called when a dentry becomes associted with an inode.
+ * This hook is called when a dentry becomes associated with an inode.
  */
 SEC("lsm/d_instantiate")
 int BPF_PROG(seabee_label_pin, struct dentry *dentry, struct inode *inode)

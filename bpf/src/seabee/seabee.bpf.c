@@ -484,7 +484,7 @@ int BPF_PROG(seabee_kernel_module_request, char *kmod_name)
 		log_kernel_module_request(LOG_LEVEL_WARN, LOG_REASON_DENY,
 		                          (const unsigned char *)kmod_name);
 		return DENY;
-	} else if (kmod_modification == (u32)SECURITY_BLOCK) {
+	} else if (kmod_modification == (u32)SECURITY_AUDIT) {
 		log_kernel_module_request(LOG_LEVEL_INFO, LOG_REASON_AUDIT,
 		                          (const unsigned char *)kmod_name);
 	}
